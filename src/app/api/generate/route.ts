@@ -1,39 +1,54 @@
 import { NextResponse } from 'next/server';
-import { LLMProviderFactory } from '@/services/provider';
-import { ModelProvider } from '@/store/useBenchmarkStore';
+import { OpenAIService } from '@/services/OpenAIService';
+import { GeminiService } from '@/services/GeminiService';
+import { GroqService } from '@/services/GroqService';
 
-interface GenerateRequest {
-  prompt: string;
-  models: ModelProvider[];
-}
-
-export async function POST(req: Request) {
+export async function POST(request: Request) {
   try {
-    const body: GenerateRequest = await req.json();
+    const body = await request.json();
     const { prompt, models } = body;
 
-    if (!prompt || !models || models.length === 0) {
-      return NextResponse.json({ error: 'Prompt ve model listesi zorunludur' }, { status: 400 });
+    if (!prompt || !models || !Array.isArray(models) || models.length === 0) {
+      return NextResponse.json(
+        { error: 'Prompt and an array of models are required.' },
+        { status: 400 }
+      );
     }
 
-    // Aynı anda (paralel) tüm servislere istek atıyoruz (Provider Pattern)
-    const promises = models.map(async (model) => {
-      try {
-        const service = LLMProviderFactory.getService(model);
-        const startTime = Date.now();
-        const content = await service.generate(prompt);
-        const timeTakenMs = Date.now() - startTime;
-        
-        return { model, content, timeTakenMs, error: null };
-      } catch (error: any) {
-        return { model, content: null, timeTakenMs: 0, error: error.message };
+    const promises = models.map((model: string) => {
+      switch (model.toLowerCase()) {
+        case 'openai':
+          return new OpenAIService().generateCode(prompt);
+        case 'gemini':
+          return new GeminiService().generateCode(prompt);
+        case 'groq':
+          return new GroqService().generateCode(prompt);
+        default:
+          return Promise.reject(new Error(`Unsupported model: ${model}`));
       }
     });
 
-    const results = await Promise.all(promises);
+    // Use Promise.allSettled to simultaneously call selected models
+    const results = await Promise.allSettled(promises);
 
-    return NextResponse.json({ results });
+    const formattedResults = results.map((result, index) => {
+      if (result.status === 'fulfilled') {
+        return result.value;
+      } else {
+        return {
+          code: '',
+          executionTime: 0,
+          error: result.reason.message || 'Error occurred during generation',
+          model: models[index],
+        };
+      }
+    });
+
+    return NextResponse.json({ results: formattedResults });
   } catch (error: any) {
-    return NextResponse.json({ error: 'Sunucu Hatası', details: error.message }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Internal Server Error', details: error.message },
+      { status: 500 }
+    );
   }
 }
