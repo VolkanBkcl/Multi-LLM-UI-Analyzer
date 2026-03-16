@@ -1,35 +1,37 @@
-import { LLMProvider, GenerationResult } from './LLMProvider';
-import axios from 'axios';
+import { LLMProvider } from './LLMProvider';
+import OpenAI from 'openai';
 
 export class OpenAIService implements LLMProvider {
-  async generateCode(prompt: string): Promise<GenerationResult> {
-    const startTime = performance.now();
+  private client: OpenAI;
+
+  constructor() {
+    this.client = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+  }
+
+  async generateCode(prompt: string): Promise<string> {
+    const controller = new AbortController();
+    const TIMEOUT_MS = 15000;
+    const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
     try {
-      const response = await axios.post("https://openrouter.ai/api/v1/chat/completions", {
-        // OpenAI - Test için gpt-4o veya openrouter/free kullanılabilir.
-        // Orijinal sürümde OpenAI testlerini yönetmiştik.
-        model: "openrouter/free", 
-        messages: [{ role: "user", content: prompt }]
-      }, {
-        headers: {
-          "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
-          "Content-Type": "application/json"
-        }
-      });
+      const response = await this.client.chat.completions.create(
+        {
+          model: 'gpt-4o-mini',
+          messages: [{ role: 'user', content: prompt }],
+        },
+        { signal: controller.signal }
+      );
       
-      const executionTime = Math.round(performance.now() - startTime);
-      return {
-        code: response.data.choices[0].message.content || '',
-        executionTime,
-        model: 'OpenAI (OpenRouter)',
-      };
+      clearTimeout(timeoutId);
+      return response.choices[0]?.message?.content || '';
     } catch (error: any) {
-      return {
-        code: '',
-        executionTime: Math.round(performance.now() - startTime),
-        error: error.response?.data?.error?.message || error.message || 'OpenAI API Hatası',
-        model: 'OpenAI (OpenRouter)',
-      };
+      clearTimeout(timeoutId);
+      if (error.name === 'AbortError') {
+        throw new Error('Timeout: OpenAI modeli belirlenen süre içinde yanıt vermedi.');
+      }
+      throw error;
     }
   }
 }

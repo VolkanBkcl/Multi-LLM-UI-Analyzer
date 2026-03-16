@@ -1,34 +1,37 @@
-import { LLMProvider, GenerationResult } from './LLMProvider';
-import axios from 'axios';
+import { LLMProvider } from './LLMProvider';
+import Groq from 'groq-sdk';
 
 export class GroqService implements LLMProvider {
-  async generateCode(prompt: string): Promise<GenerationResult> {
-    const startTime = performance.now();
+  private groq: Groq;
+
+  constructor() {
+    this.groq = new Groq({
+      apiKey: process.env.GROQ_API_KEY,
+    });
+  }
+
+  async generateCode(prompt: string): Promise<string> {
+    const controller = new AbortController();
+    const TIMEOUT_MS = 15000;
+    const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
     try {
-      const response = await axios.post("https://openrouter.ai/api/v1/chat/completions", {
-        // Groq (Llama) - Test için model ismi
-        model: "openrouter/free", 
-        messages: [{ role: "user", content: prompt }]
-      }, {
-        headers: {
-          "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
-          "Content-Type": "application/json"
-        }
-      });
-      
-      const executionTime = Math.round(performance.now() - startTime);
-      return {
-        code: response.data.choices[0].message.content || '',
-        executionTime,
-        model: 'Groq (OpenRouter)',
-      };
+      const response = await this.groq.chat.completions.create(
+        {
+          messages: [{ role: 'user', content: prompt }],
+          model: 'llama3-8b-8192',
+        },
+        { signal: controller.signal }
+      );
+
+      clearTimeout(timeoutId);
+      return response.choices[0]?.message?.content || '';
     } catch (error: any) {
-      return {
-        code: '',
-        executionTime: Math.round(performance.now() - startTime),
-        error: error.response?.data?.error?.message || error.message || 'Groq API Hatası',
-        model: 'Groq (OpenRouter)',
-      };
+      clearTimeout(timeoutId);
+      if (error.name === 'AbortError') {
+        throw new Error('Timeout: Groq modeli belirlenen süre içinde yanıt vermedi.');
+      }
+      throw error;
     }
   }
 }
