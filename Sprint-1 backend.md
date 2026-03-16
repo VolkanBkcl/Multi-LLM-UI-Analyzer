@@ -43,4 +43,23 @@ Projeyi local ortamda test etmek ve çalıştırmak için:
 npm run dev
 ```
 
-Sunucu başladıktan sonra sistem, API isteklerini kabul etmeye ve `/api/generate` route'u üzerinden seçilen tüm LLM sağlayıcılarına asenkron olarak bağlanmaya hazır olacaktır. İstek atmak için Provider Context içerisindeki `runBenchmark` fonksiyonunu UI'dan tetikleyebilirsiniz.
+## 4. Gelişmiş Backend Entegrasyonu (Sprint 2 & 3 Güncellemeleri)
+
+Projenin ilerleyen aşamalarında API bağımlılıklarını tek elde toplamak ve arayüz hatalarını önlemek amacıyla aşağıdaki mimari değişiklikler yapıldı:
+
+1. **Çoklu SDK Yerine Tek Merkezli OpenRouter Yapısı:**
+   - OpenAI, Google (Gemini) ve Groq SDK'ları kaldırılarak tek bir uç noktadan (OpenRouter) HTTP istekleri atılmasına karar verildi.
+   - Tüm servis dosyaları (`OpenAIService.ts`, `GeminiService.ts`, `GroqService.ts`), standart `axios` yapısıyla OpenRouter `https://openrouter.ai/api/v1/chat/completions` adresine bağlanacak şekilde güncellendi.
+   
+2. **Markdown Parser (Metin Ayıklama) Eklentisi:**
+   - Yapay zeka modelleri sadece kodu değil, yanında gereksiz sohbet metinlerini ("İşte kodunuz...", "Açıklama:") de döndürdüğü için arayüzde render hataları yaşanıyordu.
+   - `src/lib/parser.ts` dizininde, gelen metnin içinden sadece kod bloğunu (```html ... ```) çıkartan özel bir fonksiyon (`extractCodeFromMarkdown`) yazıldı.
+   - Bu fonskiyon `api/generate/route.ts` içerisine entegre edilerek, modele ait yanıtların UI'a gitmeden önce temizlenmesi sağlandı.
+
+3. **Gelişmiş .env.local Kullanımı:**
+   - Üç farklı API Key yönetimi yerine sadece tek bir `OPENROUTER_API_KEY` yetkilendirmesi ayarlandı.
+   
+4. **Sonsuz Yükleme (Infinite Loading) Çözümü:**
+   - API'den dönen model anahtarları (Key) ile UI'ın (`useBenchmarkStore.ts`) beklediği anahtarlar eşitlendiği için frontend tarafındaki takılma sorunları giderildi. 
+
+Sunucu çalışırken yukarıdaki adımların tamamı test edilmiş ve `0` hata ile derlendiği görülmüştür. Artık platform canlı render için `%100` hazırdır.

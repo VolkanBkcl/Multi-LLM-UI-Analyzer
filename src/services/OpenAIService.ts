@@ -1,35 +1,34 @@
 import { LLMProvider, GenerationResult } from './LLMProvider';
-import OpenAI from 'openai';
+import axios from 'axios';
 
 export class OpenAIService implements LLMProvider {
-  private client: OpenAI;
-
-  constructor() {
-    this.client = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
-  }
-
   async generateCode(prompt: string): Promise<GenerationResult> {
     const startTime = performance.now();
     try {
-      const response = await this.client.chat.completions.create({
-        model: 'gpt-4o-mini',
-        messages: [{ role: 'user', content: prompt }],
+      const response = await axios.post("https://openrouter.ai/api/v1/chat/completions", {
+        // OpenAI - Test için gpt-4o veya openrouter/free kullanılabilir.
+        // Orijinal sürümde OpenAI testlerini yönetmiştik.
+        model: "openrouter/free", 
+        messages: [{ role: "user", content: prompt }]
+      }, {
+        headers: {
+          "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
+          "Content-Type": "application/json"
+        }
       });
       
-      const executionTime = performance.now() - startTime;
+      const executionTime = Math.round(performance.now() - startTime);
       return {
-        code: response.choices[0].message.content || '',
+        code: response.data.choices[0].message.content || '',
         executionTime,
-        model: 'OpenAI',
+        model: 'OpenAI (OpenRouter)',
       };
     } catch (error: any) {
       return {
         code: '',
-        executionTime: performance.now() - startTime,
-        error: error.message || 'Unknown error occurred in OpenAI Service',
-        model: 'OpenAI',
+        executionTime: Math.round(performance.now() - startTime),
+        error: error.response?.data?.error?.message || error.message || 'OpenAI API Hatası',
+        model: 'OpenAI (OpenRouter)',
       };
     }
   }

@@ -12,7 +12,7 @@ export default function Dashboard() {
   
   const [votes, setVotes] = useState({ openai: 0, gemini: 0, groq: 0 });
   const handleVote = (modelId: string) => {
-    setVotes(prev => ({ ...prev, [modelId]: prev[modelId as keyof typeof prev] + 1 }));
+    setVotes((prev: typeof votes) => ({ ...prev, [modelId]: prev[modelId as keyof typeof prev] + 1 }));
   };
   const totalVotes = votes.openai + votes.gemini + votes.groq;
   const getPercentage = (count: number) => totalVotes === 0 ? 0 : Math.round((count / totalVotes) * 100);
@@ -29,7 +29,13 @@ export default function Dashboard() {
       const data = await res.json();
       if (data.results) {
         data.results.forEach((r: any) => {
-          updateResult(r.model, { content: r.content, loading: false, error: r.error, timeTakenMs: r.timeTakenMs });
+          // Backend ekibinin güncel formatı (GenerationResult): code ve executionTime
+          updateResult(r.model.toLowerCase(), { 
+            content: r.code, 
+            loading: false, 
+            error: r.error, 
+            timeTakenMs: r.executionTime 
+          });
         });
       }
     } catch (error: any) {
@@ -50,7 +56,7 @@ export default function Dashboard() {
         
         <main className="flex-1 space-y-6 overflow-y-auto pb-44 pr-2 custom-scrollbar">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {selectedModels.map((model) => (
+            {selectedModels.map((model: ModelProvider) => (
               <div key={model} className="flex flex-col rounded-[2rem] border border-zinc-800 bg-zinc-900/30 overflow-hidden transition-all hover:border-blue-500/30 group">
                 
                 {/* ÜST BAŞLIK VE YENİ BELİRGİN SEÇİM BUTONU */}
@@ -72,14 +78,22 @@ export default function Dashboard() {
                 </div>
 
                 <div className="p-6 flex-1 flex flex-col min-h-[350px]">
-                  <div className="text-sm text-zinc-300 leading-relaxed font-light italic">
+                  <div className="text-sm text-zinc-300 leading-relaxed font-light italic w-full">
                     {results[model]?.loading ? (
                       <div className="m-auto flex flex-col items-center gap-2">
                         <Loader2 className="animate-spin h-5 w-5 text-blue-500" />
                         <span className="text-[9px] text-zinc-600 uppercase tracking-widest italic">Yükleniyor</span>
                       </div>
-                    ) : results[model]?.content || (
-                      <div className="m-auto opacity-10 text-[10px] uppercase tracking-widest italic">Bekleniyor</div>
+                    ) : results[model]?.error ? (
+                      <div className="text-red-500 text-xs p-2">{results[model]?.error}</div>
+                    ) : results[model]?.content ? (
+                      <div className="bg-zinc-800/50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800/80 overflow-x-auto not-italic">
+                        <pre className="text-[11px] font-mono text-zinc-300 whitespace-pre-wrap break-words">
+                          <code>{results[model].content}</code>
+                        </pre>
+                      </div>
+                    ) : (
+                      <div className="m-auto opacity-10 text-[10px] uppercase tracking-widest italic text-center mt-10">Bekleniyor</div>
                     )}
                   </div>
                 </div>
@@ -127,8 +141,8 @@ export default function Dashboard() {
           <input
             type="text"
             value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleGenerate()}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPrompt(e.target.value)}
+            onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && handleGenerate()}
             placeholder="Modelleri karşılaştırın ve en iyisini seçin..."
             className="flex-1 bg-transparent px-5 py-2 outline-none text-sm placeholder:text-zinc-700"
           />

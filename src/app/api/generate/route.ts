@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { OpenAIService } from '@/services/OpenAIService';
 import { GeminiService } from '@/services/GeminiService';
 import { GroqService } from '@/services/GroqService';
+import { extractCodeFromMarkdown } from '@/lib/parser';
 
 export async function POST(request: Request) {
   try {
@@ -33,7 +34,12 @@ export async function POST(request: Request) {
 
     const formattedResults = results.map((result, index) => {
       if (result.status === 'fulfilled') {
-        return result.value;
+        const val = result.value;
+        return {
+          ...val,
+          model: models[index], // Store'daki (zustand) key ile eşleşmesi için orjinal ismi kullan
+          code: extractCodeFromMarkdown(val.code)
+        };
       } else {
         return {
           code: '',

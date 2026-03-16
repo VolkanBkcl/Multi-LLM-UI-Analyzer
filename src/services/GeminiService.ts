@@ -1,33 +1,33 @@
 import { LLMProvider, GenerationResult } from './LLMProvider';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import axios from 'axios';
 
 export class GeminiService implements LLMProvider {
-  private genAI: GoogleGenerativeAI;
-
-  constructor() {
-    const apiKey = process.env.GEMINI_API_KEY || '';
-    this.genAI = new GoogleGenerativeAI(apiKey);
-  }
-
   async generateCode(prompt: string): Promise<GenerationResult> {
     const startTime = performance.now();
     try {
-      const model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
+      const response = await axios.post("https://openrouter.ai/api/v1/chat/completions", {
+        // Gemini - Test için model ismi
+        model: "openrouter/free", 
+        messages: [{ role: "user", content: prompt }]
+      }, {
+        headers: {
+          "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
+          "Content-Type": "application/json"
+        }
+      });
       
-      const executionTime = performance.now() - startTime;
+      const executionTime = Math.round(performance.now() - startTime);
       return {
-        code: response.text(),
+        code: response.data.choices[0].message.content || '',
         executionTime,
-        model: 'Gemini',
+        model: 'Gemini (OpenRouter)',
       };
     } catch (error: any) {
       return {
         code: '',
-        executionTime: performance.now() - startTime,
-        error: error.message || 'Unknown error occurred in Gemini Service',
-        model: 'Gemini',
+        executionTime: Math.round(performance.now() - startTime),
+        error: error.response?.data?.error?.message || error.message || 'Gemini API Hatası',
+        model: 'Gemini (OpenRouter)',
       };
     }
   }
