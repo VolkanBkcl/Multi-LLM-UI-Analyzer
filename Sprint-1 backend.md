@@ -43,7 +43,7 @@ Projeyi local ortamda test etmek ve çalıştırmak için:
 npm run dev
 ```
 
-## 4. Gelişmiş Backend Entegrasyonu (Sprint 2 & 3 Güncellemeleri)
+## 4. Gelişmiş Backend Entegrasyonu
 
 Projenin ilerleyen aşamalarında API bağımlılıklarını tek elde toplamak ve arayüz hatalarını önlemek amacıyla aşağıdaki mimari değişiklikler yapıldı:
 
