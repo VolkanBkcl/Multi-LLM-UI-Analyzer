@@ -13,13 +13,15 @@ export class GeminiService implements LLMProvider {
     const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
     try {
-      const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + process.env.GEMINI_API_KEY, {
-        method: 'POST',
+      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
+          "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }]
+          model: "openrouter/free",
+          messages: [{ role: "user", content: prompt }]
         }),
         signal: controller.signal // İptal fırlatıcı sinyal
       });
@@ -27,13 +29,12 @@ export class GeminiService implements LLMProvider {
       clearTimeout(timeoutId);
 
       if (!response.ok) {
-        throw new Error(`Gemini API Error - Durum Kodu: ${response.status}`);
+        throw new Error(`Gemini (OpenRouter) API Error - Durum Kodu: ${response.status}`);
       }
 
       const data = await response.json();
       
-      // Google Gemini için örnek parser. Modelden modele parse işlemi değişebilir.
-      const generatedCode = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      const generatedCode = data.choices?.[0]?.message?.content || '';
       
       return generatedCode;
 

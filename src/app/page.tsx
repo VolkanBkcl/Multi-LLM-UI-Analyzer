@@ -29,13 +29,18 @@ export default function Dashboard() {
       const data = await res.json();
       if (data.results) {
         data.results.forEach((r: any) => {
-          // Backend ekibinin güncel formatı (GenerationResult): code ve executionTime
-          updateResult(r.model.toLowerCase(), { 
-            content: r.code, 
-            loading: false, 
-            error: r.error, 
-            timeTakenMs: r.executionTime 
-          });
+          // Backend ekibinin en güncel (UnifiedResponse) yapısı:
+          // modelName, generatedCode, errorMessage, latency
+          const modelKey = (r.modelName || r.model || '').toLowerCase();
+          
+          if (modelKey) {
+            updateResult(modelKey, { 
+              content: r.generatedCode || r.code || '', 
+              loading: false, 
+              error: r.errorMessage || r.error || (r.status === 'error' ? 'Bilinmeyen Hata' : null), 
+              timeTakenMs: r.latency || r.executionTime || 0
+            });
+          }
         });
       }
     } catch (error: any) {
