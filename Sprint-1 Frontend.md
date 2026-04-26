@@ -1,4 +1,4 @@
-# Sprint-1: Frontend Geliştirme Raporu 1.Hafta Fatih Karadağ
+# Sprint-1: Frontend Geliştirme Raporu 1.Hafta
 
 Bu dosya, projenin ilk sprint aşamasında frontend tarafında yapılan geliştirme ve iyileştirmeleri içermektedir.
 

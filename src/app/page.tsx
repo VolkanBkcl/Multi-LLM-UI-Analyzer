@@ -1,161 +1,492 @@
 "use client";
 
-import { useBenchmarkStore, ModelProvider } from '@/store/useBenchmarkStore';
-import { useState } from 'react';
-import { Play, Loader2, TrendingUp, Info, CheckCircle2 } from 'lucide-react';
+import { useBenchmarkStore, ModelProvider, ModelResult } from "@/store/useBenchmarkStore";
+import { useState, useRef, useEffect } from "react";
+import {
+  Zap, Send, Loader2, Trophy, BarChart2, Clock, Sparkles,
+  ThumbsUp, Minus, RefreshCw, Copy,
+  Maximize2, MessageSquarePlus, Search, Globe, Code, Image,
+  ChevronDown, ChevronRight, X, Eye,
+  PieChart,
+} from "lucide-react";
 
-const AVAILABLE_MODELS: ModelProvider[] = ['openai', 'gemini', 'groq'];
+// ─── Types ──────────────────────────────────────────────────
+type VoteKey = ModelProvider | "tie" | "both_bad";
+type VoteState = Record<ModelProvider, number> & { tie: number; both_bad: number };
 
+// ─── Constants ──────────────────────────────────────────────
+const AVAILABLE_MODELS: ModelProvider[] = ["openai", "gemini", "groq"];
+
+const MODEL_DISPLAY: Record<ModelProvider, string> = {
+  openai: "OpenAI", gemini: "Gemini", groq: "Groq",
+};
+
+const MODEL_COLORS: Record<ModelProvider, string> = {
+  openai: "var(--vote-a)", gemini: "var(--vote-b)", groq: "var(--vote-tie)",
+};
+
+const MODEL_BADGE_CLS: Record<ModelProvider, string> = {
+  openai: "bg-cyan-500/10 text-cyan-400 border-cyan-500/20",
+  gemini: "bg-violet-500/10 text-violet-400 border-violet-500/20",
+  groq: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+};
+
+
+
+// ─── Sidebar ────────────────────────────────────────────────
+function Sidebar({ open, onClose, votes, models, totalVotes, onNewChat, activeCategory, onCategoryChange, searchQuery, onSearchChange }: {
+  open: boolean; onClose: () => void;
+  votes: VoteState; models: ModelProvider[]; totalVotes: number;
+  onNewChat: () => void; activeCategory: string; onCategoryChange: (c: string) => void;
+  searchQuery: string; onSearchChange: (q: string) => void;
+}) {
+  const [lbOpen, setLbOpen] = useState(false);
+  const [statsOpen, setStatsOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const pct = (k: string) => totalVotes === 0 ? 0 : Math.round(((votes as Record<string, number>)[k] / totalVotes) * 100);
+
+  return (
+    <>
+      {open && <div className="fixed inset-0 bg-black/40 z-40 lg:hidden" onClick={onClose} />}
+      <aside className={`fixed top-0 left-0 h-full z-50 w-64 border-r border-[--border-soft] bg-[--surface] flex flex-col transition-transform duration-300 ${open ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0 lg:static lg:z-auto`}>
+        <div className="flex items-center gap-2.5 px-5 h-14 border-b border-[--border-soft] shrink-0">
+          <div className="w-6 h-6 rounded-md bg-[--accent] flex items-center justify-center">
+            <Zap className="w-3.5 h-3.5 text-white" strokeWidth={2.5} />
+          </div>
+          <span className="text-sm font-black tracking-tight text-white">Loomina</span>
+          <button onClick={onClose} className="ml-auto lg:hidden p-1 text-zinc-500 hover:text-white"><X className="w-4 h-4" /></button>
+        </div>
+        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+          <SidebarBtn icon={<MessageSquarePlus className="w-4 h-4" />} label="Yeni Sohbet" active={activeCategory === "chat"} onClick={() => { onNewChat(); onCategoryChange("chat"); }} />
+
+          {/* Leaderboard */}
+          <button onClick={() => setLbOpen(!lbOpen)} className="w-full flex items-center gap-2.5 px-3 py-2 text-xs rounded-lg transition-all text-left text-zinc-500 hover:text-zinc-300 hover:bg-white/5">
+            <BarChart2 className="w-4 h-4" /><span className="flex-1 truncate">Liderlik Tablosu</span>
+            <ChevronRight className={`w-3 h-3 transition-transform duration-200 ${lbOpen ? "rotate-90" : ""}`} />
+          </button>
+          {lbOpen && (
+            <div className="ml-3 pl-3 border-l border-[--border-soft] space-y-0.5 animate-fade-in">
+              <SidebarBtn icon={<PieChart className="w-3.5 h-3.5" />} label="Overview" active={activeCategory === "overview"} onClick={() => onCategoryChange("overview")} />
+            </div>
+          )}
+
+          <SidebarBtn icon={<Search className="w-4 h-4" />} label="Arama" active={searchOpen} onClick={() => setSearchOpen(!searchOpen)} />
+          {searchOpen && (
+            <div className="px-2 pb-2 animate-fade-in">
+              <input type="text" value={searchQuery} onChange={e => onSearchChange(e.target.value)} placeholder="Sohbetlerde ara..." className="w-full px-3 py-2 text-xs bg-[--surface-2] border border-[--border-soft] rounded-lg text-zinc-200 placeholder:text-zinc-600 outline-none focus:border-[--accent] transition-colors" />
+            </div>
+          )}
+
+          {/* Stats */}
+          <button onClick={() => setStatsOpen(!statsOpen)} className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs rounded-lg transition-all text-left ${statsOpen ? "bg-white/5 text-white font-semibold" : "text-zinc-500 hover:text-zinc-300 hover:bg-white/5"}`}>
+            <Trophy className="w-4 h-4 text-amber-400" /><span className="flex-1 truncate">Oylama İstatistikleri</span>
+            {totalVotes > 0 && <span className="text-[9px] bg-[--accent]/20 text-[--accent] px-1.5 py-0.5 rounded-full font-bold">{totalVotes}</span>}
+          </button>
+          {statsOpen && totalVotes > 0 && (
+            <div className="ml-3 pl-3 border-l border-[--border-soft] space-y-2 py-2 animate-fade-in">
+              {models.map(m => (
+                <div key={m} className="space-y-1">
+                  <div className="flex items-center justify-between px-2">
+                    <span className="text-[10px] font-semibold" style={{ color: MODEL_COLORS[m] }}>{MODEL_DISPLAY[m]}</span>
+                    <span className="text-[10px] text-zinc-500 font-mono">{pct(m)}%</span>
+                  </div>
+                  <div className="mx-2 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                    <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct(m)}%`, background: MODEL_COLORS[m] }} />
+                  </div>
+                </div>
+              ))}
+              <div className="flex items-center justify-between px-2 pt-1">
+                <span className="text-[10px] text-zinc-600">Berabere</span><span className="text-[10px] text-zinc-500 font-mono">{pct("tie")}%</span>
+              </div>
+              <div className="flex items-center justify-between px-2">
+                <span className="text-[10px] text-zinc-600">Hepsi Kötü</span><span className="text-[10px] text-zinc-500 font-mono">{pct("both_bad")}%</span>
+              </div>
+            </div>
+          )}
+
+          <div className="pt-6 pb-2 px-2"><span className="text-[10px] font-bold uppercase tracking-widest text-zinc-600">Bugün</span></div>
+          <SidebarBtn icon={<Clock className="w-3.5 h-3.5" />} label="Açık kaynak avantajları..." small onClick={() => onCategoryChange("chat")} />
+        </nav>
+        <div className="px-5 py-3 border-t border-[--border-soft] text-[10px] text-zinc-600 flex gap-3">
+          <a href="#" className="hover:text-zinc-400 transition-colors">Kullanım Şartları</a>
+          <a href="#" className="hover:text-zinc-400 transition-colors">Gizlilik</a>
+          <a href="#" className="hover:text-zinc-400 transition-colors">Çerezler</a>
+        </div>
+      </aside>
+    </>
+  );
+}
+
+function SidebarBtn({ icon, label, active, small, onClick }: { icon: React.ReactNode; label: string; active?: boolean; small?: boolean; onClick?: () => void }) {
+  return (
+    <button onClick={onClick} className={`w-full flex items-center gap-2.5 px-3 rounded-lg transition-all text-left ${small ? "py-1.5 text-[11px]" : "py-2 text-xs"} ${active ? "bg-white/5 text-white font-semibold" : "text-zinc-500 hover:text-zinc-300 hover:bg-white/5"}`}>
+      {icon}<span className="truncate">{label}</span>
+    </button>
+  );
+}
+
+// ─── Model Card ─────────────────────────────────────────────
+function ModelCard({ model, result, animDelay }: { model: ModelProvider; result: ModelResult | undefined; animDelay: string }) {
+  const [copied, setCopied] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const isLoading = result?.loading ?? false;
+  const hasContent = !isLoading && !!result?.content && !result.error;
+  const hasError = !isLoading && !!result?.error;
+
+  const handleCopy = () => {
+    if (result?.content) {
+      navigator.clipboard.writeText(result.content);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  return (
+    <>
+      <div className="arena-card flex flex-col overflow-hidden animate-fade-up" style={{ animationDelay: animDelay }}>
+        <div className="flex items-center justify-between px-4 py-3 border-b border-[--border-soft]">
+          <div className="flex items-center gap-2.5">
+            <div className="w-2 h-2 rounded-full" style={{ background: MODEL_COLORS[model], boxShadow: `0 0 8px ${MODEL_COLORS[model]}` }} />
+            <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${MODEL_BADGE_CLS[model]}`}>{MODEL_DISPLAY[model]}</span>
+            {result?.timeTakenMs ? (<span className="text-[10px] text-zinc-600 font-mono flex items-center gap-1"><Clock className="w-3 h-3" />{result.timeTakenMs}ms</span>) : null}
+          </div>
+          <div className="flex items-center gap-1">
+            <button onClick={() => hasContent && setPreviewOpen(true)} className={`flex items-center gap-1 px-2 py-1 text-[10px] font-semibold rounded-md transition-all border ${hasContent ? "border-[--accent]/30 text-[--accent] hover:bg-[--accent]/10 cursor-pointer" : "border-transparent text-zinc-700 cursor-not-allowed"}`} title="Önizle" disabled={!hasContent}>
+              <Eye className="w-3 h-3" />Önizle
+            </button>
+            <button className="p-1.5 text-zinc-600 hover:text-zinc-300 hover:bg-white/5 rounded-md transition-all" title="Yeniden oluştur"><RefreshCw className="w-3.5 h-3.5" /></button>
+            <button onClick={handleCopy} className="p-1.5 text-zinc-600 hover:text-zinc-300 hover:bg-white/5 rounded-md transition-all" title="Kopyala">{copied ? <span className="text-[10px] text-emerald-400">✓</span> : <Copy className="w-3.5 h-3.5" />}</button>
+            <button onClick={() => hasContent && setPreviewOpen(true)} className="p-1.5 text-zinc-600 hover:text-zinc-300 hover:bg-white/5 rounded-md transition-all" title="Tam ekran"><Maximize2 className="w-3.5 h-3.5" /></button>
+          </div>
+        </div>
+        <div className="flex-1 p-5 min-h-[280px] max-h-[500px] overflow-y-auto">
+          {isLoading && (
+            <div className="flex flex-col items-center justify-center h-full gap-3">
+              <div className="w-8 h-8 rounded-full border-2 border-[--border-soft] animate-spin" style={{ borderTopColor: MODEL_COLORS[model] }} />
+              <p className="text-[10px] text-zinc-600 uppercase tracking-widest animate-pulse">Yanıt oluşturuluyor…</p>
+              <div className="w-full space-y-2 mt-2">{[80, 55, 90, 40].map((w, i) => <div key={i} className="shimmer h-3 rounded-full" style={{ width: `${w}%`, animationDelay: `${i * 0.15}s` }} />)}</div>
+            </div>
+          )}
+          {hasError && <div className="flex items-start gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm"><span>⚠</span><span>{result!.error}</span></div>}
+          {hasContent && (
+            <div className="animate-fade-in prose-sm text-zinc-300 leading-relaxed whitespace-pre-wrap break-words text-[13px]">{result!.content}</div>
+          )}
+          {!isLoading && !hasContent && !hasError && (
+            <div className="flex flex-col items-center justify-center h-full gap-2 opacity-15 select-none">
+              <Sparkles className="w-7 h-7" /><p className="text-[10px] uppercase tracking-widest">Yanıt bekleniyor</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Preview Modal */}
+      {previewOpen && hasContent && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm animate-fade-in" onClick={() => setPreviewOpen(false)}>
+          <div className="relative w-[90vw] max-w-4xl max-h-[85vh] bg-[--surface] border border-[--border] rounded-2xl shadow-2xl flex flex-col animate-fade-up" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[--border-soft] shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-2.5 h-2.5 rounded-full" style={{ background: MODEL_COLORS[model], boxShadow: `0 0 8px ${MODEL_COLORS[model]}` }} />
+                <span className={`text-xs font-bold px-2.5 py-1 rounded-full border ${MODEL_BADGE_CLS[model]}`}>{MODEL_DISPLAY[model]}</span>
+                <span className="text-xs text-zinc-500">Önizleme</span>
+                {result?.timeTakenMs && <span className="text-[10px] text-zinc-600 font-mono"><Clock className="w-3 h-3 inline mr-1" />{result.timeTakenMs}ms</span>}
+              </div>
+              <div className="flex items-center gap-2">
+                <button onClick={handleCopy} className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border border-[--border-soft] text-zinc-400 hover:text-white hover:bg-white/5 transition-all">
+                  <Copy className="w-3.5 h-3.5" />{copied ? "Kopyalandı" : "Kopyala"}
+                </button>
+                <button onClick={() => setPreviewOpen(false)} className="p-2 text-zinc-500 hover:text-white hover:bg-white/5 rounded-lg transition-all"><X className="w-4 h-4" /></button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6">
+              <pre className="text-sm text-zinc-200 leading-relaxed whitespace-pre-wrap break-words font-mono bg-[--surface-2] rounded-xl p-5 border border-[--border-soft]">{result!.content}</pre>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+// ─── Battle Voting (dynamic model count) ────────────────────
+const VOTE_BTN_STYLES: Record<string, string> = {
+  openai: "vote-btn-a",
+  gemini: "vote-btn-b",
+  groq: "vote-btn-tie",
+};
+
+function BattleVoting({ models, hasResults, onVote, voted }: { models: ModelProvider[]; hasResults: boolean; onVote: (k: VoteKey) => void; voted: VoteKey | null }) {
+  const disabled = !hasResults || voted !== null;
+  const allLabel = models.length === 2 ? "İkisi de" : "Hepsi";
+  return (
+    <div className={`transition-all duration-500 ${hasResults ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 pointer-events-none"}`}>
+      <div className="flex items-center justify-center gap-2 flex-wrap">
+        {models.map(m => (
+          <button key={m} className={`vote-btn ${VOTE_BTN_STYLES[m] || ""}`} onClick={() => onVote(m)} disabled={disabled}>
+            {MODEL_DISPLAY[m]} Daha İyi{voted === m && " ✓"}
+          </button>
+        ))}
+        <button className="vote-btn vote-btn-tie" onClick={() => onVote("tie")} disabled={disabled}><ThumbsUp className="w-3.5 h-3.5" />{allLabel} İyi{voted === "tie" && " ✓"}</button>
+        <button className="vote-btn" style={{ borderColor: "rgba(239,68,68,0.25)", color: "#f87171", background: "rgba(239,68,68,0.1)" }} onClick={() => onVote("both_bad")} disabled={disabled}><Minus className="w-3.5 h-3.5" />{allLabel} Kötü{voted === "both_bad" && " ✓"}</button>
+      </div>
+      {voted !== null && <p className="text-center text-[11px] text-zinc-500 mt-3 animate-fade-in">Oyunuz kaydedildi — teşekkürler!</p>}
+    </div>
+  );
+}
+
+// ─── Main Page ──────────────────────────────────────────────
 export default function Dashboard() {
   const { prompt, setPrompt, results, isGenerating, startGeneration, updateResult, finishGeneration } = useBenchmarkStore();
-  const [selectedModels, setSelectedModels] = useState<ModelProvider[]>(['openai', 'gemini', 'groq']);
-  
-  const [votes, setVotes] = useState({ openai: 0, gemini: 0, groq: 0 });
-  const handleVote = (modelId: string) => {
-    setVotes((prev: typeof votes) => ({ ...prev, [modelId]: prev[modelId as keyof typeof prev] + 1 }));
+  const [selectedModels, setSelectedModels] = useState<ModelProvider[]>(["openai", "gemini"]);
+  const [votes, setVotes] = useState<VoteState>({ openai: 0, gemini: 0, groq: 0, tie: 0, both_bad: 0 });
+  const [voted, setVoted] = useState<VoteKey | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [modeOpen, setModeOpen] = useState(false);
+  const [hasBeenGenerated, setHasBeenGenerated] = useState(false);
+  const [lastPrompt, setLastPrompt] = useState("");
+  const [activeCategory, setActiveCategory] = useState("chat");
+  const [activeMode, setActiveMode] = useState("Battle Mode");
+  const [searchQuery, setSearchQuery] = useState("");
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  // Use a ref to always have access to the latest prompt value
+  const promptRef = useRef(prompt);
+  promptRef.current = prompt;
+  const selectedModelsRef = useRef(selectedModels);
+  selectedModelsRef.current = selectedModels;
+
+  const totalVotes = votes.openai + votes.gemini + votes.groq + votes.tie + votes.both_bad;
+  // Check if any model has content OR error (both mean results came back)
+  const hasAnyResult = selectedModels.some(m => {
+    const r = results[m];
+    return r && !r.loading && (!!r.content || !!r.error);
+  });
+  // Show cards whenever generating or results exist
+  const showCards = isGenerating || hasBeenGenerated;
+
+  useEffect(() => { if (isGenerating) setVoted(null); }, [isGenerating]);
+
+  // Close mode dropdown when clicking outside
+  useEffect(() => {
+    if (!modeOpen) return;
+    const handler = () => setModeOpen(false);
+    window.addEventListener("click", handler);
+    return () => window.removeEventListener("click", handler);
+  }, [modeOpen]);
+
+  const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setPrompt(e.target.value);
+    const el = e.target;
+    el.style.height = "auto";
+    el.style.height = Math.min(el.scrollHeight, 160) + "px";
   };
-  const totalVotes = votes.openai + votes.gemini + votes.groq;
-  const getPercentage = (count: number) => totalVotes === 0 ? 0 : Math.round((count / totalVotes) * 100);
+
+  const handleVote = (key: VoteKey) => {
+    if (voted !== null) return;
+    setVoted(key);
+    setVotes(prev => ({ ...prev, [key]: (prev as Record<string, number>)[key] + 1 }));
+  };
+
+  const handleNewChat = () => {
+    setPrompt("");
+    setHasBeenGenerated(false);
+    setLastPrompt("");
+    setVoted(null);
+    setVotes({ openai: 0, gemini: 0, groq: 0, tie: 0, both_bad: 0 });
+    if (textareaRef.current) { textareaRef.current.style.height = "auto"; }
+  };
+
+  const toggleModel = (model: ModelProvider) => {
+    setSelectedModels(prev =>
+      prev.includes(model)
+        ? (prev.length > 1 ? prev.filter(m => m !== model) : prev)
+        : [...prev, model]
+    );
+  };
 
   const handleGenerate = async () => {
-    if (!prompt.trim() || selectedModels.length === 0) return;
-    startGeneration(selectedModels);
+    const currentPrompt = promptRef.current;
+    const currentModels = selectedModelsRef.current;
+    if (!currentPrompt.trim() || currentModels.length === 0 || isGenerating) return;
+
+    console.log("[Loomina] Generating for prompt:", currentPrompt, "models:", currentModels);
+    setHasBeenGenerated(true);
+    setLastPrompt(currentPrompt);
+    startGeneration(currentModels);
+
     try {
-      const res = await fetch('/api/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, models: selectedModels }),
+      const res = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: currentPrompt, models: currentModels }),
       });
       const data = await res.json();
+      console.log("[Loomina] API response:", data);
+
       if (data.results) {
         data.results.forEach((r: any) => {
-          // Backend ekibinin en güncel (UnifiedResponse) yapısı:
-          // modelName, generatedCode, errorMessage, latency
-          const modelKey = (r.modelName || r.model || '').toLowerCase();
-          
+          const modelKey = (r.modelName || r.model || "").toLowerCase();
           if (modelKey) {
-            updateResult(modelKey, { 
-              content: r.generatedCode || r.code || '', 
-              loading: false, 
-              error: r.errorMessage || r.error || (r.status === 'error' ? 'Bilinmeyen Hata' : null), 
-              timeTakenMs: r.latency || r.executionTime || 0
+            updateResult(modelKey, {
+              content: r.generatedCode || r.code || "",
+              loading: false,
+              error: r.errorMessage || r.error || (r.status === "error" ? "Bilinmeyen Hata" : null),
+              timeTakenMs: r.latency || r.executionTime || 0,
             });
           }
         });
       }
-    } catch (error: any) {
-      selectedModels.forEach((model) => updateResult(model, { loading: false, error: 'Hata oluştu' }));
+      if (data.error) {
+        console.error("[Loomina] API error:", data.error);
+        currentModels.forEach(model =>
+          updateResult(model, { loading: false, error: data.error })
+        );
+      }
+    } catch (err) {
+      console.error("[Loomina] Fetch error:", err);
+      currentModels.forEach(model =>
+        updateResult(model, { loading: false, error: "Bağlantı hatası oluştu." })
+      );
     } finally {
       finishGeneration();
     }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleGenerate();
+    }
+  };
+
+  const colClass = selectedModels.length <= 2
+    ? "grid-cols-1 md:grid-cols-2"
+    : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3";
+
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 p-6 flex flex-col overflow-hidden font-sans">
-      
-      <header className="max-w-7xl mx-auto w-full mb-6">
-        <h1 className="text-2xl font-black text-blue-500 uppercase tracking-tighter italic italic">Loomina</h1>
-      </header>
+    <div className="flex h-screen overflow-hidden" style={{ background: "var(--background)", color: "var(--foreground)" }}>
+      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} votes={votes} models={selectedModels} totalVotes={totalVotes} onNewChat={handleNewChat} activeCategory={activeCategory} onCategoryChange={setActiveCategory} searchQuery={searchQuery} onSearchChange={setSearchQuery} />
 
-      <div className="flex-1 max-w-7xl mx-auto w-full flex gap-6 overflow-hidden">
-        
-        <main className="flex-1 space-y-6 overflow-y-auto pb-44 pr-2 custom-scrollbar">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {selectedModels.map((model: ModelProvider) => (
-              <div key={model} className="flex flex-col rounded-[2rem] border border-zinc-800 bg-zinc-900/30 overflow-hidden transition-all hover:border-blue-500/30 group">
-                
-                {/* ÜST BAŞLIK VE YENİ BELİRGİN SEÇİM BUTONU */}
-                <div className="bg-zinc-900/60 px-5 py-3 border-b border-zinc-800/50 flex justify-between items-center">
-                  <div className="flex items-center gap-3">
-                    <span className="font-bold text-[10px] uppercase tracking-[0.2em] text-zinc-400">{model}</span>
-                    
-                    {/* İŞTE O BUTON: DAHA BELİRGİN VE MAVİ */}
-                    <button 
-                      onClick={() => handleVote(model)}
-                      className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 hover:bg-blue-500 hover:text-white transition-all text-[8px] font-bold text-blue-400 group-hover:scale-110"
-                    >
-                      <CheckCircle2 className="w-3 h-3" />
-                      SEÇ
-                    </button>
-                  </div>
-                  
-                  {results[model]?.timeTakenMs && <span className="text-[9px] text-blue-500 font-mono">{results[model].timeTakenMs}ms</span>}
-                </div>
-
-                <div className="p-6 flex-1 flex flex-col min-h-[350px]">
-                  <div className="text-sm text-zinc-300 leading-relaxed font-light italic w-full">
-                    {results[model]?.loading ? (
-                      <div className="m-auto flex flex-col items-center gap-2">
-                        <Loader2 className="animate-spin h-5 w-5 text-blue-500" />
-                        <span className="text-[9px] text-zinc-600 uppercase tracking-widest italic">Yükleniyor</span>
-                      </div>
-                    ) : results[model]?.error ? (
-                      <div className="text-red-500 text-xs p-2">{results[model]?.error}</div>
-                    ) : results[model]?.content ? (
-                      <div className="bg-zinc-800/50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800/80 overflow-x-auto not-italic">
-                        <pre className="text-[11px] font-mono text-zinc-300 whitespace-pre-wrap break-words">
-                          <code>{results[model].content}</code>
-                        </pre>
-                      </div>
-                    ) : (
-                      <div className="m-auto opacity-10 text-[10px] uppercase tracking-widest italic text-center mt-10">Bekleniyor</div>
-                    )}
-                  </div>
-                </div>
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        {/* Top Bar */}
+        <header className="h-12 border-b border-[--border-soft] bg-[--surface]/60 backdrop-blur-md flex items-center px-4 gap-3 shrink-0 z-30">
+          <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-1.5 text-zinc-500 hover:text-white rounded-md hover:bg-white/5 transition-all">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
+          </button>
+          <div className="relative" onClick={(e) => e.stopPropagation()}>
+            <button onClick={() => setModeOpen(!modeOpen)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-zinc-300 hover:text-white rounded-lg hover:bg-white/5 transition-all">
+              <Zap className="w-3.5 h-3.5 text-[--accent]" />{activeMode}<ChevronDown className="w-3 h-3 text-zinc-500" />
+            </button>
+            {modeOpen && (
+              <div className="absolute top-full left-0 mt-1 w-44 bg-[--surface-2] border border-[--border] rounded-xl shadow-2xl py-1 z-50 animate-fade-in">
+                {["Battle Mode", "Yan Yana", "Direkt"].map((mode) => (
+                  <button key={mode} onClick={() => { setActiveMode(mode); setModeOpen(false); }} className={`w-full text-left px-4 py-2 text-xs transition-all ${mode === activeMode ? "text-white bg-white/5 font-semibold" : "text-zinc-400 hover:text-white hover:bg-white/5"}`}>
+                    {mode === "Battle Mode" && <Zap className="w-3 h-3 inline mr-1.5 text-[--accent]" />}{mode}
+                  </button>
+                ))}
               </div>
-            ))}
+            )}
+          </div>
+          <div className="flex-1" />
+          <button className="px-4 py-1.5 text-xs font-semibold rounded-lg bg-white text-zinc-900 hover:bg-zinc-200 transition-all">Giriş Yap</button>
+        </header>
+
+        {/* Content */}
+        <main className="flex-1 overflow-y-auto">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-6 pb-64">
+            {/* Empty state — only shown before first generation */}
+            {!showCards && (
+              <div className="flex flex-col items-center justify-center py-20 animate-fade-up">
+                <div className="w-12 h-12 rounded-2xl bg-[--accent] flex items-center justify-center mb-5 shadow-lg shadow-[--accent-glow]">
+                  <Zap className="w-6 h-6 text-white" />
+                </div>
+                <h1 className="text-3xl font-black tracking-tight text-white mb-2">Loomina</h1>
+                <p className="text-sm text-zinc-500 mb-1">Modelleri karşılaştır, en iyisini seç.</p>
+              </div>
+            )}
+
+            {/* User prompt bubble */}
+            {showCards && lastPrompt && (
+              <div className="flex justify-end mb-6 animate-fade-up">
+                <div className="max-w-lg px-4 py-2.5 rounded-2xl rounded-br-md bg-[--surface-2] text-sm text-zinc-200">{lastPrompt}</div>
+              </div>
+            )}
+
+            {/* Model cards */}
+            {showCards && (
+              <div className={`grid ${colClass} gap-4 mb-6`}>
+                {selectedModels.map((model, i) => (
+                  <ModelCard key={model} model={model} result={results[model]} animDelay={`${i * 80}ms`} />
+                ))}
+              </div>
+            )}
+
+            {/* Battle Voting */}
+            {showCards && (
+              <BattleVoting models={selectedModels} hasResults={hasAnyResult} onVote={handleVote} voted={voted} />
+            )}
           </div>
         </main>
 
-        <aside className="hidden xl:block w-60 bg-zinc-900/40 border border-zinc-800/50 rounded-[2rem] p-5 h-fit sticky top-0 backdrop-blur-md shadow-2xl">
-          <div className="flex items-center justify-between mb-6 border-b border-zinc-800 pb-3">
-            <div className="flex items-center gap-2">
-              <TrendingUp className="text-blue-500 w-3.5 h-3.5" />
-              <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-300">Tercihler</h3>
-            </div>
+        {/* Footer - Prompt area */}
+        <footer className="fixed bottom-0 right-0 left-0 lg:left-64 z-40">
+          <div className="px-4 sm:px-6 pt-6 pb-4" style={{ background: "linear-gradient(to top, var(--background) 60%, transparent)" }}>
+            <div className="max-w-3xl mx-auto space-y-2">
 
-            <div className="group relative">
-              <div className="w-5 h-5 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center cursor-help hover:border-blue-500 transition-all">
-                <Info className="w-3 h-3 text-zinc-500 group-hover:text-blue-400" />
+              <div className="arena-card overflow-hidden shadow-2xl">
+                <div className="px-4 pt-3">
+                  <textarea
+                    ref={textareaRef}
+                    value={prompt}
+                    onChange={handleTextareaChange}
+                    onKeyDown={handleKeyDown}
+                    placeholder="Bir şey sor..."
+                    rows={1}
+                    className="w-full bg-transparent resize-none outline-none text-sm text-zinc-100 placeholder:text-zinc-600 leading-relaxed"
+                    style={{ maxHeight: "160px" }}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between px-3 py-2 border-t border-[--border-soft]">
+                  <div className="flex items-center gap-0.5">
+                    {AVAILABLE_MODELS.map(m => {
+                      const active = selectedModels.includes(m);
+                      return (
+                        <button
+                          key={m}
+                          type="button"
+                          onClick={() => toggleModel(m)}
+                          className={`text-[10px] font-bold px-2 py-1 rounded-md transition-all border ${active ? MODEL_BADGE_CLS[m] : "text-zinc-600 border-transparent hover:border-zinc-700"}`}
+                        >
+                          {MODEL_DISPLAY[m]}
+                        </button>
+                      );
+                    })}
+                    <div className="w-px h-4 bg-[--border-soft] mx-1.5" />
+                    {[Globe, Image, Code].map((Icon, i) => (
+                      <button key={i} type="button" className="p-1.5 text-zinc-600 hover:text-zinc-400 rounded-md hover:bg-white/5 transition-all"><Icon className="w-3.5 h-3.5" /></button>
+                    ))}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span className={`text-[10px] font-mono ${prompt.length > 2000 ? "text-red-400" : "text-zinc-700"}`}>{prompt.length > 0 ? prompt.length : ""}</span>
+                    <button
+                      type="button"
+                      onClick={() => { console.log("[Loomina] Send clicked, prompt:", promptRef.current); handleGenerate(); }}
+                      disabled={isGenerating || !prompt.trim()}
+                      className="flex items-center justify-center w-8 h-8 rounded-lg transition-all disabled:opacity-25 disabled:cursor-not-allowed cursor-pointer"
+                      style={{ background: prompt.trim() && !isGenerating ? "var(--accent)" : "var(--surface-2)" }}
+                      aria-label="Gönder"
+                    >
+                      {isGenerating ? <Loader2 className="w-4 h-4 text-white animate-spin" /> : <Send className="w-4 h-4 text-white" />}
+                    </button>
+                  </div>
+                </div>
               </div>
-              <div className="absolute right-7 top-1/2 -translate-y-1/2 w-44 p-3 bg-zinc-900 border border-zinc-700 text-[9px] text-zinc-400 rounded-xl shadow-2xl invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-all duration-200 z-[100] leading-relaxed normal-case tracking-normal">
-                Bu oran, kullanıcıların hangi yapay zekanın daha kullanışlı cevap verdiğini gösterir.
-                <div className="absolute top-1/2 -right-1 -translate-y-1/2 border-4 border-transparent border-l-zinc-700"></div>
-              </div>
+
+              <p className="text-center text-[10px] text-zinc-700">Yanıtlar üçüncü taraf yapay zeka tarafından üretilir ve hatalı olabilir.</p>
             </div>
           </div>
-
-          <div className="space-y-5">
-            {AVAILABLE_MODELS.map(m => (
-              <div key={m} className="space-y-1.5">
-                <div className="flex justify-between text-[9px] font-bold uppercase tracking-tighter">
-                  <span className="text-zinc-600">{m}</span>
-                  <span className="text-blue-500">{getPercentage(votes[m as keyof typeof votes])}%</span>
-                </div>
-                <div className="h-1 w-full bg-zinc-800 rounded-full overflow-hidden">
-                  <div className="h-full bg-blue-600 transition-all duration-1000" style={{ width: `${getPercentage(votes[m as keyof typeof votes])}%` }} />
-                </div>
-              </div>
-            ))}
-          </div>
-        </aside>
+        </footer>
       </div>
-
-      <footer className="fixed bottom-0 left-0 right-0 p-8 bg-gradient-to-t from-zinc-950 via-zinc-950 to-transparent z-[90]">
-        <div className="max-w-3xl mx-auto flex gap-3 bg-zinc-900/80 border border-zinc-800 p-2 rounded-3xl shadow-2xl backdrop-blur-xl focus-within:border-blue-500/30 transition-all">
-          <input
-            type="text"
-            value={prompt}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPrompt(e.target.value)}
-            onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && handleGenerate()}
-            placeholder="Modelleri karşılaştırın ve en iyisini seçin..."
-            className="flex-1 bg-transparent px-5 py-2 outline-none text-sm placeholder:text-zinc-700"
-          />
-          <button onClick={handleGenerate} disabled={isGenerating || !prompt.trim()} className="bg-blue-600 hover:bg-blue-500 disabled:bg-zinc-800 text-white p-4 rounded-2xl transition-all shadow-lg shadow-blue-600/10">
-            {isGenerating ? <Loader2 className="animate-spin w-4 h-4" /> : <Play className="fill-current w-4 h-4" />}
-          </button>
-        </div>
-      </footer>
     </div>
   );
 }
