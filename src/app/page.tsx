@@ -7,7 +7,7 @@ import {
   ThumbsUp, Minus, RefreshCw, Copy,
   Maximize2, MessageSquarePlus, Search, Globe, Code, Image,
   ChevronDown, ChevronRight, X, Eye,
-  PieChart, ExternalLink
+  PieChart, ExternalLink, Plus
 } from "lucide-react";
 import { openCodeInNewTab } from "@/utils/preview";
 
@@ -16,20 +16,56 @@ type VoteKey = ModelProvider | "tie" | "both_bad";
 type VoteState = Record<ModelProvider, number> & { tie: number; both_bad: number };
 
 // ─── Constants ──────────────────────────────────────────────
-const AVAILABLE_MODELS: ModelProvider[] = ["openai", "gemini", "groq"];
+const AVAILABLE_MODELS: ModelProvider[] = [
+  'openai/gpt-4o',
+  'anthropic/claude-3.7-sonnet',
+  'google/gemini-pro-1.5',
+  'deepseek/deepseek-chat',
+  'deepseek/deepseek-reasoner',
+  'meta-llama/llama-3.3-70b-instruct',
+  'mistralai/mistral-large-2411',
+  'anthropic/claude-3.5-haiku',
+  'google/gemini-2.0-flash-lite-001',
+  'cohere/command-r-plus-08-2024'
+];
 
 const MODEL_DISPLAY: Record<ModelProvider, string> = {
-  openai: "OpenAI", gemini: "Gemini", groq: "Groq",
+  'openai/gpt-4o': "GPT-4o",
+  'anthropic/claude-3.7-sonnet': "Claude 3.7",
+  'google/gemini-pro-1.5': "Gemini 1.5 Pro",
+  'deepseek/deepseek-chat': "DeepSeek V3",
+  'deepseek/deepseek-reasoner': "DeepSeek R1",
+  'meta-llama/llama-3.3-70b-instruct': "Llama 3.3 70B",
+  'mistralai/mistral-large-2411': "Mistral Large 2",
+  'anthropic/claude-3.5-haiku': "Claude 3.5 Haiku",
+  'google/gemini-2.0-flash-lite-001': "Gemini 2.0 Flash Lite",
+  'cohere/command-r-plus-08-2024': "Command R+"
 };
 
 const MODEL_COLORS: Record<ModelProvider, string> = {
-  openai: "var(--vote-a)", gemini: "var(--vote-b)", groq: "var(--vote-tie)",
+  'openai/gpt-4o': "#10a37f",
+  'anthropic/claude-3.7-sonnet': "#d97757",
+  'google/gemini-pro-1.5': "#8e24aa",
+  'deepseek/deepseek-chat': "#4d6bfe",
+  'deepseek/deepseek-reasoner': "#4d6bfe",
+  'meta-llama/llama-3.3-70b-instruct': "#0668E1",
+  'mistralai/mistral-large-2411': "#f2a900",
+  'anthropic/claude-3.5-haiku': "#d97757",
+  'google/gemini-2.0-flash-lite-001': "#8e24aa",
+  'cohere/command-r-plus-08-2024': "#39594d"
 };
 
 const MODEL_BADGE_CLS: Record<ModelProvider, string> = {
-  openai: "bg-cyan-500/10 text-cyan-400 border-cyan-500/20",
-  gemini: "bg-violet-500/10 text-violet-400 border-violet-500/20",
-  groq: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+  'openai/gpt-4o': "bg-[#10a37f]/10 text-[#10a37f] border-[#10a37f]/20",
+  'anthropic/claude-3.7-sonnet': "bg-[#d97757]/10 text-[#d97757] border-[#d97757]/20",
+  'google/gemini-pro-1.5': "bg-[#8e24aa]/10 text-[#8e24aa] border-[#8e24aa]/20",
+  'deepseek/deepseek-chat': "bg-[#4d6bfe]/10 text-[#4d6bfe] border-[#4d6bfe]/20",
+  'deepseek/deepseek-reasoner': "bg-[#4d6bfe]/10 text-[#4d6bfe] border-[#4d6bfe]/20",
+  'meta-llama/llama-3.3-70b-instruct': "bg-[#0668E1]/10 text-[#0668E1] border-[#0668E1]/20",
+  'mistralai/mistral-large-2411': "bg-[#f2a900]/10 text-[#f2a900] border-[#f2a900]/20",
+  'anthropic/claude-3.5-haiku': "bg-[#d97757]/10 text-[#d97757] border-[#d97757]/20",
+  'google/gemini-2.0-flash-lite-001': "bg-[#8e24aa]/10 text-[#8e24aa] border-[#8e24aa]/20",
+  'cohere/command-r-plus-08-2024': "bg-[#39594d]/10 text-[#39594d] border-[#39594d]/20"
 };
 
 
@@ -310,10 +346,17 @@ function ModelCard({ model, result, animDelay }: { model: ModelProvider; result:
 }
 
 // ─── Battle Voting (dynamic model count) ────────────────────
-const VOTE_BTN_STYLES: Record<string, string> = {
-  openai: "vote-btn-a",
-  gemini: "vote-btn-b",
-  groq: "vote-btn-tie",
+const VOTE_BTN_STYLES: Record<ModelProvider, string> = {
+  'openai/gpt-4o': "vote-btn-a",
+  'anthropic/claude-3.7-sonnet': "vote-btn-b",
+  'google/gemini-pro-1.5': "vote-btn-tie",
+  'deepseek/deepseek-chat': "vote-btn-a",
+  'deepseek/deepseek-reasoner': "vote-btn-b",
+  'meta-llama/llama-3.3-70b-instruct': "vote-btn-a",
+  'mistralai/mistral-large-2411': "vote-btn-b",
+  'anthropic/claude-3.5-haiku': "vote-btn-tie",
+  'google/gemini-2.0-flash-lite-001': "vote-btn-a",
+  'cohere/command-r-plus-08-2024': "vote-btn-b",
 };
 
 function BattleVoting({ models, hasResults, onVote, voted }: { models: ModelProvider[]; hasResults: boolean; onVote: (k: VoteKey) => void; voted: VoteKey | null }) {
@@ -338,8 +381,12 @@ function BattleVoting({ models, hasResults, onVote, voted }: { models: ModelProv
 // ─── Main Page ──────────────────────────────────────────────
 export default function Dashboard() {
   const { prompt, setPrompt, results, isGenerating, startGeneration, updateResult, finishGeneration } = useBenchmarkStore();
-  const [selectedModels, setSelectedModels] = useState<ModelProvider[]>(["openai", "gemini"]);
-  const [votes, setVotes] = useState<VoteState>({ openai: 0, gemini: 0, groq: 0, tie: 0, both_bad: 0 });
+  const [selectedModels, setSelectedModels] = useState<ModelProvider[]>(["openai/gpt-4o", "google/gemini-pro-1.5"]);
+  const [votes, setVotes] = useState<VoteState>(() => {
+    const initial: any = { tie: 0, both_bad: 0 };
+    AVAILABLE_MODELS.forEach(m => initial[m] = 0);
+    return initial;
+  });
   const [voted, setVoted] = useState<VoteKey | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [modeOpen, setModeOpen] = useState(false);
@@ -348,6 +395,8 @@ export default function Dashboard() {
   const [activeCategory, setActiveCategory] = useState("chat");
   const [activeMode, setActiveMode] = useState("Battle Mode");
   const [searchQuery, setSearchQuery] = useState("");
+  const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
+  const modelDropdownRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   // Use a ref to always have access to the latest prompt value
   const promptRef = useRef(prompt);
@@ -355,7 +404,7 @@ export default function Dashboard() {
   const selectedModelsRef = useRef(selectedModels);
   selectedModelsRef.current = selectedModels;
 
-  const totalVotes = votes.openai + votes.gemini + votes.groq + votes.tie + votes.both_bad;
+  const totalVotes = Object.values(votes).reduce((a, b) => a + b, 0);
   // Check if any model has content OR error (both mean results came back)
   const hasAnyResult = selectedModels.some(m => {
     const r = results[m];
@@ -373,6 +422,18 @@ export default function Dashboard() {
     window.addEventListener("click", handler);
     return () => window.removeEventListener("click", handler);
   }, [modeOpen]);
+
+  // Close model dropdown when clicking outside
+  useEffect(() => {
+    if (!modelDropdownOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (modelDropdownRef.current && !modelDropdownRef.current.contains(e.target as Node)) {
+        setModelDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [modelDropdownOpen]);
 
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setPrompt(e.target.value);
@@ -392,16 +453,23 @@ export default function Dashboard() {
     setHasBeenGenerated(false);
     setLastPrompt("");
     setVoted(null);
-    setVotes({ openai: 0, gemini: 0, groq: 0, tie: 0, both_bad: 0 });
+    const initialVotes: any = { tie: 0, both_bad: 0 };
+    AVAILABLE_MODELS.forEach(m => initialVotes[m] = 0);
+    setVotes(initialVotes);
     if (textareaRef.current) { textareaRef.current.style.height = "auto"; }
   };
 
   const toggleModel = (model: ModelProvider) => {
-    setSelectedModels(prev =>
-      prev.includes(model)
-        ? (prev.length > 1 ? prev.filter(m => m !== model) : prev)
-        : [...prev, model]
-    );
+    setSelectedModels(prev => {
+      if (prev.includes(model)) {
+        return prev.length > 1 ? prev.filter(m => m !== model) : prev;
+      }
+      if (prev.length >= 3) {
+        // En fazla 3 model seçilebilir, yeni gelirse en eski olanı at.
+        return [...prev.slice(1), model];
+      }
+      return [...prev, model];
+    });
   };
 
   const handleGenerate = async () => {
@@ -533,7 +601,7 @@ export default function Dashboard() {
           <div className="px-4 sm:px-6 pt-6 pb-4" style={{ background: "linear-gradient(to top, var(--background) 60%, transparent)" }}>
             <div className="max-w-3xl mx-auto space-y-2">
 
-              <div className="arena-card overflow-hidden shadow-2xl">
+              <div className="arena-card !overflow-visible shadow-2xl relative">
                 <div className="px-4 pt-3">
                   <textarea
                     ref={textareaRef}
@@ -548,20 +616,50 @@ export default function Dashboard() {
                 </div>
 
                 <div className="flex items-center justify-between px-3 py-2 border-t border-[--border-soft]">
-                  <div className="flex items-center gap-0.5">
-                    {AVAILABLE_MODELS.map(m => {
-                      const active = selectedModels.includes(m);
-                      return (
-                        <button
-                          key={m}
-                          type="button"
-                          onClick={() => toggleModel(m)}
-                          className={`text-[10px] font-bold px-2 py-1 rounded-md transition-all border ${active ? MODEL_BADGE_CLS[m] : "text-zinc-600 border-transparent hover:border-zinc-700"}`}
-                        >
-                          {MODEL_DISPLAY[m]}
-                        </button>
-                      );
-                    })}
+                  <div className="flex items-center gap-1.5 relative">
+                    {selectedModels.map(m => (
+                      <div key={m} className={`flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-md transition-all border ${MODEL_BADGE_CLS[m]}`}>
+                        {MODEL_DISPLAY[m]}
+                        <button onClick={() => toggleModel(m)} className="opacity-50 hover:opacity-100 ml-1" title="Kaldır"><X className="w-3 h-3" /></button>
+                      </div>
+                    ))}
+                    
+                    <div className="relative" ref={modelDropdownRef}>
+                      <button
+                        type="button"
+                        onClick={() => setModelDropdownOpen(prev => !prev)}
+                        className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-md text-zinc-400 hover:text-white hover:bg-white/10 border border-transparent transition-all"
+                      >
+                        <Plus className="w-3 h-3" /> Model Ekle
+                      </button>
+                      
+                      {modelDropdownOpen && (
+                        <div className="absolute bottom-full left-0 mb-2 z-[100] animate-fade-in">
+                          <div className="w-56 bg-zinc-900 border border-[--border-soft] rounded-xl shadow-2xl p-2 max-h-72 overflow-y-auto">
+                            <div className="text-[10px] text-zinc-400 px-2 py-1.5 font-bold mb-1 border-b border-[--border-soft] uppercase tracking-wider">En fazla 3 model seçilebilir</div>
+                            <div className="space-y-0.5 mt-1">
+                              {AVAILABLE_MODELS.map(m => {
+                                const active = selectedModels.includes(m);
+                                return (
+                                  <button
+                                    key={m}
+                                    onClick={() => toggleModel(m)}
+                                    className={`w-full text-left text-[11px] px-2.5 py-2 rounded-lg flex items-center justify-between transition-colors ${active ? "bg-white/10 text-white font-bold" : "text-zinc-400 hover:bg-white/5 hover:text-white"}`}
+                                  >
+                                    <span className="flex items-center gap-1.5">
+                                      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: MODEL_COLORS[m] }} />
+                                      {MODEL_DISPLAY[m]}
+                                    </span>
+                                    {active && <span className="text-emerald-400 text-xs">✓</span>}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
                     <div className="w-px h-4 bg-[--border-soft] mx-1.5" />
                     {[Globe, Image, Code].map((Icon, i) => (
                       <button key={i} type="button" className="p-1.5 text-zinc-600 hover:text-zinc-400 rounded-md hover:bg-white/5 transition-all"><Icon className="w-3.5 h-3.5" /></button>

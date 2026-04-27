@@ -1,6 +1,16 @@
 import { create } from 'zustand';
 
-export type ModelProvider = 'openai' | 'gemini' | 'groq';
+export type ModelProvider = 
+  | 'openai/gpt-4o'
+  | 'anthropic/claude-3.7-sonnet'
+  | 'google/gemini-pro-1.5'
+  | 'deepseek/deepseek-chat'
+  | 'deepseek/deepseek-reasoner'
+  | 'meta-llama/llama-3.3-70b-instruct'
+  | 'mistralai/mistral-large-2411'
+  | 'anthropic/claude-3.5-haiku'
+  | 'google/gemini-2.0-flash-lite-001'
+  | 'cohere/command-r-plus-08-2024';
 
 export type AnalysisResult = {
   readability: number;

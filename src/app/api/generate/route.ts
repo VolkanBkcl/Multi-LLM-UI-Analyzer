@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server';
-import { OpenAIService } from '@/services/OpenAIService';
-import { GeminiService } from '@/services/GeminiService';
-import { GroqService } from '@/services/GroqService';
+import { OpenRouterService } from '@/services/openrouter';
 import { extractCodeFromMarkdown } from '@/lib/parser';
 
 // İstemciye (frontend) döndüreceğimiz standart yapının arayüzü
@@ -24,35 +22,21 @@ export async function POST(request: Request) {
       );
     }
 
+    const openRouterService = new OpenRouterService();
+
     // Her bir servise atılacak isteği zaman ölçümüyle sarıp Promise döndüren yardımcı fonksiyon.
-    const createModelPromise = async (model: string, userPrompt: string): Promise<UnifiedResponse> => {
+    const createModelPromise = async (modelId: string, userPrompt: string): Promise<UnifiedResponse> => {
       const startTime = performance.now();
       
       try {
-        let generatedCode = '';
-
-        // İlgili servisi çağırıp string formatında kodu alıyoruz.
-        switch (model.toLowerCase()) {
-          case 'openai':
-            generatedCode = await new OpenAIService().generateCode(userPrompt);
-            break;
-          case 'gemini':
-            generatedCode = await new GeminiService().generateCode(userPrompt);
-            break;
-          case 'groq':
-            generatedCode = await new GroqService().generateCode(userPrompt);
-            break;
-          default:
-            throw new Error(`Desteklenmeyen model türü: ${model}`);
-        }
-
+        // İlgili modeli OpenRouter üzerinden çağırıyoruz
+        const generatedCode = await openRouterService.generateCode(modelId, userPrompt);
         const endTime = performance.now();
         
-        // Başarılı olursa unified response dönülür
         return {
-          modelName: model,
+          modelName: modelId,
           generatedCode,
-          latency: Number((endTime - startTime).toFixed(2)), // ms cinsinden
+          latency: Number((endTime - startTime).toFixed(2)),
           status: 'success'
         };
 
@@ -63,7 +47,7 @@ export async function POST(request: Request) {
         // allSettled'ın "rejected" bloğuna yakalanması için Promise.reject fırlatıyoruz 
         // Yanında gecikmeyi ve hata parçasını da ekleyerek reject ediyoruz.
         return Promise.reject({
-          modelName: model,
+          modelName: modelId,
           latency: Number((endTime - startTime).toFixed(2)),
           errorMessage: error.message || 'API isteği başarısız oldu'
         });
@@ -71,7 +55,7 @@ export async function POST(request: Request) {
     };
 
     // Tüm modeller için Promise bloklarını tek seferde ve asenkron yaratıyoruz
-    const promises = models.map((model: string) => createModelPromise(model, prompt));
+    const promises = models.map((modelId: string) => createModelPromise(modelId, prompt));
 
     // Promise.allSettled: Biri patlasa dahi (reject), diğer model sonuçlarının dönmesini garanti ederiz
     const results = await Promise.allSettled(promises);
