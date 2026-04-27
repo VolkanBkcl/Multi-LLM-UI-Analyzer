@@ -7,8 +7,9 @@ import {
   ThumbsUp, Minus, RefreshCw, Copy,
   Maximize2, MessageSquarePlus, Search, Globe, Code, Image,
   ChevronDown, ChevronRight, X, Eye,
-  PieChart,
+  PieChart, ExternalLink
 } from "lucide-react";
+import { openCodeInNewTab } from "@/utils/preview";
 
 // ─── Types ──────────────────────────────────────────────────
 type VoteKey = ModelProvider | "tie" | "both_bad";
@@ -125,8 +126,41 @@ function SidebarBtn({ icon, label, active, small, onClick }: { icon: React.React
   );
 }
 
+// ─── AI Review UI ───────────────────────────────────────────
+function CategoryScore({ title, score, suggestions }: { title: string, score: number, suggestions: string[] }) {
+  const isGood = score >= 8;
+  const isWarn = score >= 5 && score < 8;
+  
+  const colorCls = isGood ? "bg-emerald-500" : isWarn ? "bg-amber-500" : "bg-red-500";
+  const textCls = isGood ? "text-emerald-400" : isWarn ? "text-amber-400" : "text-red-400";
+  const bgCls = isGood ? "bg-emerald-500/10 border-emerald-500/20" : isWarn ? "bg-amber-500/10 border-amber-500/20" : "bg-red-500/10 border-red-500/20";
+
+  return (
+    <div className={`p-2.5 rounded-lg border ${bgCls}`}>
+       <div className="flex items-center justify-between mb-1.5">
+          <span className={`text-[11px] font-bold ${textCls}`}>{title}</span>
+          <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${colorCls} text-white`}>{score}/10</span>
+       </div>
+       <div className="h-1.5 w-full bg-black/40 rounded-full overflow-hidden mb-2">
+         <div className={`h-full ${colorCls} transition-all duration-1000`} style={{ width: `${score * 10}%` }} />
+       </div>
+       {suggestions && suggestions.length > 0 && (
+         <ul className="space-y-1 mt-2">
+           {suggestions.map((s, i) => (
+              <li key={i} className="text-[10px] text-zinc-400 flex items-start gap-1">
+                <span className="mt-0.5 opacity-50">-</span>
+                <span className="leading-tight">{s}</span>
+              </li>
+           ))}
+         </ul>
+       )}
+    </div>
+  );
+}
+
 // ─── Model Card ─────────────────────────────────────────────
 function ModelCard({ model, result, animDelay }: { model: ModelProvider; result: ModelResult | undefined; animDelay: string }) {
+  const updateResult = useBenchmarkStore(state => state.updateResult);
   const [copied, setCopied] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const isLoading = result?.loading ?? false;
@@ -141,6 +175,32 @@ function ModelCard({ model, result, animDelay }: { model: ModelProvider; result:
     }
   };
 
+  const handleAnalyze = async () => {
+    if (!result?.content || result.isAnalyzing) return;
+    
+    updateResult(model, { isAnalyzing: true, analysisError: null });
+    
+    try {
+      const res = await fetch("/api/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: result.content })
+      });
+      
+      const data = await res.json();
+      
+      if (!res.ok || data.error) {
+         throw new Error(data.error || "Analiz başarısız oldu.");
+      }
+      
+      updateResult(model, { isAnalyzing: false, analysisResult: data.result });
+    } catch (err: any) {
+      updateResult(model, { isAnalyzing: false, analysisError: err.message });
+    }
+  };
+
+  const lineCount = hasContent ? result!.content.split('\n').length : 0;
+
   return (
     <>
       <div className="arena-card flex flex-col overflow-hidden animate-fade-up" style={{ animationDelay: animDelay }}>
@@ -151,8 +211,11 @@ function ModelCard({ model, result, animDelay }: { model: ModelProvider; result:
             {result?.timeTakenMs ? (<span className="text-[10px] text-zinc-600 font-mono flex items-center gap-1"><Clock className="w-3 h-3" />{result.timeTakenMs}ms</span>) : null}
           </div>
           <div className="flex items-center gap-1">
-            <button onClick={() => hasContent && setPreviewOpen(true)} className={`flex items-center gap-1 px-2 py-1 text-[10px] font-semibold rounded-md transition-all border ${hasContent ? "border-[--accent]/30 text-[--accent] hover:bg-[--accent]/10 cursor-pointer" : "border-transparent text-zinc-700 cursor-not-allowed"}`} title="Önizle" disabled={!hasContent}>
-              <Eye className="w-3 h-3" />Önizle
+            <button onClick={() => hasContent && openCodeInNewTab(result!.content)} className={`flex items-center gap-1 px-2 py-1 text-[10px] font-semibold rounded-md transition-all border ${hasContent ? "border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 cursor-pointer" : "border-transparent text-zinc-700 cursor-not-allowed"}`} title="Yeni Sekmede Çalıştır" disabled={!hasContent}>
+              <ExternalLink className="w-3 h-3" />Çalıştır
+            </button>
+            <button onClick={() => hasContent && setPreviewOpen(true)} className={`flex items-center gap-1 px-2 py-1 text-[10px] font-semibold rounded-md transition-all border ${hasContent ? "border-[--accent]/30 text-[--accent] hover:bg-[--accent]/10 cursor-pointer" : "border-transparent text-zinc-700 cursor-not-allowed"}`} title="Kodu İncele" disabled={!hasContent}>
+              <Eye className="w-3 h-3" />Kodu İncele
             </button>
             <button className="p-1.5 text-zinc-600 hover:text-zinc-300 hover:bg-white/5 rounded-md transition-all" title="Yeniden oluştur"><RefreshCw className="w-3.5 h-3.5" /></button>
             <button onClick={handleCopy} className="p-1.5 text-zinc-600 hover:text-zinc-300 hover:bg-white/5 rounded-md transition-all" title="Kopyala">{copied ? <span className="text-[10px] text-emerald-400">✓</span> : <Copy className="w-3.5 h-3.5" />}</button>
@@ -177,6 +240,42 @@ function ModelCard({ model, result, animDelay }: { model: ModelProvider; result:
             </div>
           )}
         </div>
+        {hasContent && (
+           <div className="px-4 py-3 border-t border-[--border-soft] bg-[--surface-2]">
+             <div className="flex items-center justify-between">
+                <div className="flex gap-3 text-[10px] text-zinc-500 font-mono">
+                   <span>Satır: {lineCount}</span>
+                   <span>Süre: {result!.timeTakenMs}ms</span>
+                </div>
+                <button 
+                  onClick={handleAnalyze} 
+                  disabled={result!.isAnalyzing}
+                  className="px-3 py-1.5 text-[10px] font-bold rounded-md bg-[--accent]/10 text-[--accent] hover:bg-[--accent]/20 transition-all border border-[--accent]/20 flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {result!.isAnalyzing ? <Loader2 className="w-3 h-3 animate-spin"/> : <Sparkles className="w-3 h-3"/>}
+                  {result!.isAnalyzing ? "Analiz Ediliyor..." : "Analiz Sonucunu Göster"}
+                </button>
+             </div>
+             
+             {result!.analysisError && (
+               <div className="mt-3 text-[10px] text-red-400 p-2 bg-red-500/10 rounded border border-red-500/20">
+                 {result!.analysisError}
+               </div>
+             )}
+             
+             {result!.analysisResult && (
+               <div className="mt-4 space-y-3 animate-fade-in border-t border-[--border-soft] pt-3">
+                  <h4 className="text-xs font-bold text-zinc-300 mb-2">AI Kod İnceleme Sonucu</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                     <CategoryScore title="Okunabilirlik" score={result!.analysisResult.readability} suggestions={result!.analysisResult.suggestions?.readability} />
+                     <CategoryScore title="Performans" score={result!.analysisResult.performance} suggestions={result!.analysisResult.suggestions?.performance} />
+                     <CategoryScore title="Güvenlik" score={result!.analysisResult.security} suggestions={result!.analysisResult.suggestions?.security} />
+                     <CategoryScore title="Sürdürülebilirlik" score={result!.analysisResult.maintainability} suggestions={result!.analysisResult.suggestions?.maintainability} />
+                  </div>
+               </div>
+             )}
+           </div>
+        )}
       </div>
 
       {/* Preview Modal */}
@@ -191,6 +290,9 @@ function ModelCard({ model, result, animDelay }: { model: ModelProvider; result:
                 {result?.timeTakenMs && <span className="text-[10px] text-zinc-600 font-mono"><Clock className="w-3 h-3 inline mr-1" />{result.timeTakenMs}ms</span>}
               </div>
               <div className="flex items-center gap-2">
+                <button onClick={() => openCodeInNewTab(result!.content)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border border-[--border-soft] text-zinc-400 hover:text-emerald-400 hover:bg-emerald-500/10 transition-all">
+                  <ExternalLink className="w-3.5 h-3.5" />Yeni Sekmede Çalıştır
+                </button>
                 <button onClick={handleCopy} className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border border-[--border-soft] text-zinc-400 hover:text-white hover:bg-white/5 transition-all">
                   <Copy className="w-3.5 h-3.5" />{copied ? "Kopyalandı" : "Kopyala"}
                 </button>

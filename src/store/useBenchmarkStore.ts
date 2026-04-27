@@ -2,12 +2,28 @@ import { create } from 'zustand';
 
 export type ModelProvider = 'openai' | 'gemini' | 'groq';
 
+export type AnalysisResult = {
+  readability: number;
+  performance: number;
+  security: number;
+  maintainability: number;
+  suggestions: {
+    readability: string[];
+    performance: string[];
+    security: string[];
+    maintainability: string[];
+  };
+};
+
 export type ModelResult = {
   model: ModelProvider;
   content: string;
   loading: boolean;
   error: string | null;
   timeTakenMs?: number;
+  isAnalyzing?: boolean;
+  analysisResult?: AnalysisResult | null;
+  analysisError?: string | null;
 };
 
 interface BenchmarkState {
