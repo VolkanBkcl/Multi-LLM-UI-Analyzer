@@ -1,86 +1,126 @@
 "use client";
 
 import { useBenchmarkStore, ModelProvider, ModelResult } from "@/store/useBenchmarkStore";
+import { useAuthStore } from "@/store/useAuthStore";
+import { useGlobalStats, GlobalVoteStat, GlobalOverview } from "@/hooks/useGlobalStats";
+import { useSessionHistory, GroupedSessions, SessionRecord } from "@/hooks/useSessionHistory";
 import { useState, useRef, useEffect } from "react";
 import {
   Zap, Send, Loader2, Trophy, BarChart2, Clock, Sparkles,
   ThumbsUp, Minus, RefreshCw, Copy,
   Maximize2, MessageSquarePlus, Search, Globe, Code, Image,
   ChevronDown, ChevronRight, X, Eye,
-  PieChart, ExternalLink, Plus
+  PieChart, ExternalLink, Plus, LogOut, UserCircle2, Users, History
 } from "lucide-react";
 import { openCodeInNewTab } from "@/utils/preview";
+import AuthModal from "@/components/AuthModal";
 
 // ─── Types ──────────────────────────────────────────────────
 type VoteKey = ModelProvider | "tie" | "both_bad";
 type VoteState = Record<ModelProvider, number> & { tie: number; both_bad: number };
 
 // ─── Constants ──────────────────────────────────────────────
+// Sıralama: Provider grupları — OpenAI → Anthropic → Google → DeepSeek → Meta → Mistral → NVIDIA → Cohere
 const AVAILABLE_MODELS: ModelProvider[] = [
+  // ── OpenAI ──────────────────────────────
   'openai/gpt-4o',
+  'openai/gpt-oss-120b:free',
+  // ── Anthropic ───────────────────────────
   'anthropic/claude-3.7-sonnet',
-  'google/gemini-pro-1.5',
-  'deepseek/deepseek-chat',
-  'deepseek/deepseek-reasoner',
-  'meta-llama/llama-3.3-70b-instruct',
-  'mistralai/mistral-large-2411',
   'anthropic/claude-3.5-haiku',
-  'google/gemini-2.0-flash-lite-001',
-  'cohere/command-r-plus-08-2024'
+  // ── Google ──────────────────────────────
+  'google/gemini-3-pro-preview',
+  'google/gemini-3-flash-preview',
+  // ── DeepSeek ────────────────────────────
+  'deepseek/deepseek-reasoner',
+  'deepseek/deepseek-chat',
+  // ── Meta ────────────────────────────────
+  'meta-llama/llama-3.3-70b-instruct',
+  // ── Mistral ─────────────────────────────
+  'mistralai/mistral-large-2411',
+  // ── NVIDIA ──────────────────────────────
+  'nvidia/nemotron-3-super-120b-a12b:free',
+  // ── Cohere ──────────────────────────────
+  'cohere/command-r-plus-08-2024',
 ];
 
 const MODEL_DISPLAY: Record<ModelProvider, string> = {
   'openai/gpt-4o': "GPT-4o",
-  'anthropic/claude-3.7-sonnet': "Claude 3.7",
-  'google/gemini-pro-1.5': "Gemini 1.5 Pro",
-  'deepseek/deepseek-chat': "DeepSeek V3",
+  'openai/gpt-oss-120b:free': "GPT-OSS 120B",
+  'anthropic/claude-3.7-sonnet': "Claude 3.7 Sonnet",
+  'anthropic/claude-3.5-haiku': "Claude 3.5 Haiku",
+  'google/gemini-3-pro-preview': "Gemini 3 Pro",
+  'google/gemini-3-flash-preview': "Gemini 3 Flash",
   'deepseek/deepseek-reasoner': "DeepSeek R1",
+  'deepseek/deepseek-chat': "DeepSeek V3",
   'meta-llama/llama-3.3-70b-instruct': "Llama 3.3 70B",
   'mistralai/mistral-large-2411': "Mistral Large 2",
-  'anthropic/claude-3.5-haiku': "Claude 3.5 Haiku",
-  'google/gemini-2.0-flash-lite-001': "Gemini 2.0 Flash Lite",
-  'cohere/command-r-plus-08-2024': "Command R+"
+  'nvidia/nemotron-3-super-120b-a12b:free': "Nemotron 3 Super",
+  'cohere/command-r-plus-08-2024': "Command R+",
 };
 
 const MODEL_COLORS: Record<ModelProvider, string> = {
   'openai/gpt-4o': "#10a37f",
+  'openai/gpt-oss-120b:free': "#1a9b6c",
   'anthropic/claude-3.7-sonnet': "#d97757",
-  'google/gemini-pro-1.5': "#8e24aa",
-  'deepseek/deepseek-chat': "#4d6bfe",
+  'anthropic/claude-3.5-haiku': "#e8a07a",
+  'google/gemini-3-pro-preview': "#4285f4",
+  'google/gemini-3-flash-preview': "#34a853",
   'deepseek/deepseek-reasoner': "#4d6bfe",
+  'deepseek/deepseek-chat': "#6b7afe",
   'meta-llama/llama-3.3-70b-instruct': "#0668E1",
   'mistralai/mistral-large-2411': "#f2a900",
-  'anthropic/claude-3.5-haiku': "#d97757",
-  'google/gemini-2.0-flash-lite-001': "#8e24aa",
-  'cohere/command-r-plus-08-2024': "#39594d"
+  'nvidia/nemotron-3-super-120b-a12b:free': "#76b900",
+  'cohere/command-r-plus-08-2024': "#39594d",
 };
 
 const MODEL_BADGE_CLS: Record<ModelProvider, string> = {
   'openai/gpt-4o': "bg-[#10a37f]/10 text-[#10a37f] border-[#10a37f]/20",
+  'openai/gpt-oss-120b:free': "bg-[#1a9b6c]/10 text-[#1a9b6c] border-[#1a9b6c]/20",
   'anthropic/claude-3.7-sonnet': "bg-[#d97757]/10 text-[#d97757] border-[#d97757]/20",
-  'google/gemini-pro-1.5': "bg-[#8e24aa]/10 text-[#8e24aa] border-[#8e24aa]/20",
-  'deepseek/deepseek-chat': "bg-[#4d6bfe]/10 text-[#4d6bfe] border-[#4d6bfe]/20",
+  'anthropic/claude-3.5-haiku': "bg-[#e8a07a]/10 text-[#e8a07a] border-[#e8a07a]/20",
+  'google/gemini-3-pro-preview': "bg-[#4285f4]/10 text-[#4285f4] border-[#4285f4]/20",
+  'google/gemini-3-flash-preview': "bg-[#34a853]/10 text-[#34a853] border-[#34a853]/20",
   'deepseek/deepseek-reasoner': "bg-[#4d6bfe]/10 text-[#4d6bfe] border-[#4d6bfe]/20",
+  'deepseek/deepseek-chat': "bg-[#6b7afe]/10 text-[#6b7afe] border-[#6b7afe]/20",
   'meta-llama/llama-3.3-70b-instruct': "bg-[#0668E1]/10 text-[#0668E1] border-[#0668E1]/20",
   'mistralai/mistral-large-2411': "bg-[#f2a900]/10 text-[#f2a900] border-[#f2a900]/20",
-  'anthropic/claude-3.5-haiku': "bg-[#d97757]/10 text-[#d97757] border-[#d97757]/20",
-  'google/gemini-2.0-flash-lite-001': "bg-[#8e24aa]/10 text-[#8e24aa] border-[#8e24aa]/20",
-  'cohere/command-r-plus-08-2024': "bg-[#39594d]/10 text-[#39594d] border-[#39594d]/20"
+  'nvidia/nemotron-3-super-120b-a12b:free': "bg-[#76b900]/10 text-[#76b900] border-[#76b900]/20",
+  'cohere/command-r-plus-08-2024': "bg-[#39594d]/10 text-[#39594d] border-[#39594d]/20",
 };
 
 
 
 // ─── Sidebar ────────────────────────────────────────────────
-function Sidebar({ open, onClose, votes, models, totalVotes, onNewChat, activeCategory, onCategoryChange, searchQuery, onSearchChange }: {
+function Sidebar({
+  open, onClose, votes, models, totalVotes, onNewChat,
+  activeCategory, onCategoryChange, searchQuery, onSearchChange,
+  sessionGroups, globalVoteStats, globalOverview, onLoadSession, restoringSessionId,
+}: {
   open: boolean; onClose: () => void;
   votes: VoteState; models: ModelProvider[]; totalVotes: number;
   onNewChat: () => void; activeCategory: string; onCategoryChange: (c: string) => void;
   searchQuery: string; onSearchChange: (q: string) => void;
+  sessionGroups: GroupedSessions[];
+  globalVoteStats: GlobalVoteStat[];
+  globalOverview: GlobalOverview | null;
+  onLoadSession: (s: SessionRecord) => void;
+  restoringSessionId: string | null;
 }) {
   const [lbOpen, setLbOpen] = useState(false);
   const [statsOpen, setStatsOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const pct = (k: string) => totalVotes === 0 ? 0 : Math.round(((votes as Record<string, number>)[k] / totalVotes) * 100);
+
+  const globalTotal = globalVoteStats.reduce((s, v) => s + Number(v.total), 0);
+  const globalPct = (total: number) => globalTotal === 0 ? 0 : Math.round((Number(total) / globalTotal) * 100);
+
+  const filteredGroups = searchQuery.trim()
+    ? sessionGroups.map(g => ({
+        ...g,
+        sessions: g.sessions.filter(s => s.prompt.toLowerCase().includes(searchQuery.toLowerCase())),
+      })).filter(g => g.sessions.length > 0)
+    : sessionGroups;
 
   return (
     <>
@@ -93,20 +133,73 @@ function Sidebar({ open, onClose, votes, models, totalVotes, onNewChat, activeCa
           <span className="text-sm font-black tracking-tight text-white">Loomina</span>
           <button onClick={onClose} className="ml-auto lg:hidden p-1 text-zinc-500 hover:text-white"><X className="w-4 h-4" /></button>
         </div>
+
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
           <SidebarBtn icon={<MessageSquarePlus className="w-4 h-4" />} label="Yeni Sohbet" active={activeCategory === "chat"} onClick={() => { onNewChat(); onCategoryChange("chat"); }} />
 
-          {/* Leaderboard */}
+          {/* ── Global Liderlik Tablosu ─────────────────── */}
           <button onClick={() => setLbOpen(!lbOpen)} className="w-full flex items-center gap-2.5 px-3 py-2 text-xs rounded-lg transition-all text-left text-zinc-500 hover:text-zinc-300 hover:bg-white/5">
-            <BarChart2 className="w-4 h-4" /><span className="flex-1 truncate">Liderlik Tablosu</span>
+            <BarChart2 className="w-4 h-4" />
+            <span className="flex-1 truncate">Global Liderlik</span>
+            {globalOverview && (
+              <span className="text-[9px] bg-emerald-500/15 text-emerald-400 px-1.5 py-0.5 rounded-full font-bold">
+                {globalOverview.total_sessions.toLocaleString()}
+              </span>
+            )}
             <ChevronRight className={`w-3 h-3 transition-transform duration-200 ${lbOpen ? "rotate-90" : ""}`} />
           </button>
           {lbOpen && (
-            <div className="ml-3 pl-3 border-l border-[--border-soft] space-y-0.5 animate-fade-in">
-              <SidebarBtn icon={<PieChart className="w-3.5 h-3.5" />} label="Overview" active={activeCategory === "overview"} onClick={() => onCategoryChange("overview")} />
+            <div className="ml-2 pl-2 border-l border-[--border-soft] animate-fade-in space-y-2 py-2">
+              {globalOverview && (
+                <div className="flex items-center gap-3 px-2 py-2 bg-white/5 rounded-lg">
+                  <div className="text-center">
+                    <div className="text-sm font-black text-white">{globalOverview.total_sessions.toLocaleString()}</div>
+                    <div className="text-[9px] text-zinc-500 uppercase tracking-wide">Karşılaştırma</div>
+                  </div>
+                  <div className="w-px h-8 bg-[--border-soft]" />
+                  <div className="text-center">
+                    <div className="text-sm font-black text-white">{globalOverview.total_users.toLocaleString()}</div>
+                    <div className="text-[9px] text-zinc-500 uppercase tracking-wide">Kullanıcı</div>
+                  </div>
+                  <div className="w-px h-8 bg-[--border-soft]" />
+                  <div className="text-center">
+                    <div className="text-sm font-black text-white">{globalOverview.total_votes.toLocaleString()}</div>
+                    <div className="text-[9px] text-zinc-500 uppercase tracking-wide">Oy</div>
+                  </div>
+                </div>
+              )}
+              {globalVoteStats.length > 0 ? (
+                <div className="space-y-2 mt-1">
+                  {globalVoteStats
+                    .filter(v => v.vote_key !== "tie" && v.vote_key !== "both_bad")
+                    .sort((a, b) => Number(b.total) - Number(a.total))
+                    .slice(0, 6)
+                    .map((stat, i) => {
+                      const color = MODEL_COLORS[stat.vote_key as ModelProvider] ?? "#6366f1";
+                      const name = MODEL_DISPLAY[stat.vote_key as ModelProvider] ?? stat.vote_key;
+                      return (
+                        <div key={stat.vote_key} className="space-y-1">
+                          <div className="flex items-center justify-between px-1">
+                            <span className="flex items-center gap-1.5 text-[10px] font-semibold" style={{ color }}>
+                              {i === 0 && <Trophy className="w-3 h-3 text-amber-400" />}
+                              <span className="truncate max-w-[110px]">{name}</span>
+                            </span>
+                            <span className="text-[10px] text-zinc-500 font-mono">{globalPct(stat.total)}%</span>
+                          </div>
+                          <div className="h-1 bg-zinc-800 rounded-full overflow-hidden">
+                            <div className="h-full rounded-full transition-all duration-700" style={{ width: `${globalPct(stat.total)}%`, background: color }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              ) : (
+                <p className="text-[10px] text-zinc-600 px-2">Henüz veri yok.</p>
+              )}
             </div>
           )}
 
+          {/* ── Arama ─────────────────────────────────────── */}
           <SidebarBtn icon={<Search className="w-4 h-4" />} label="Arama" active={searchOpen} onClick={() => setSearchOpen(!searchOpen)} />
           {searchOpen && (
             <div className="px-2 pb-2 animate-fade-in">
@@ -114,9 +207,9 @@ function Sidebar({ open, onClose, votes, models, totalVotes, onNewChat, activeCa
             </div>
           )}
 
-          {/* Stats */}
+          {/* ── Bu Oturumun Oylama İstatistikleri ─────────── */}
           <button onClick={() => setStatsOpen(!statsOpen)} className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs rounded-lg transition-all text-left ${statsOpen ? "bg-white/5 text-white font-semibold" : "text-zinc-500 hover:text-zinc-300 hover:bg-white/5"}`}>
-            <Trophy className="w-4 h-4 text-amber-400" /><span className="flex-1 truncate">Oylama İstatistikleri</span>
+            <Trophy className="w-4 h-4 text-amber-400" /><span className="flex-1 truncate">Bu Oturumun Oyları</span>
             {totalVotes > 0 && <span className="text-[9px] bg-[--accent]/20 text-[--accent] px-1.5 py-0.5 rounded-full font-bold">{totalVotes}</span>}
           </button>
           {statsOpen && totalVotes > 0 && (
@@ -141,9 +234,41 @@ function Sidebar({ open, onClose, votes, models, totalVotes, onNewChat, activeCa
             </div>
           )}
 
-          <div className="pt-6 pb-2 px-2"><span className="text-[10px] font-bold uppercase tracking-widest text-zinc-600">Bugün</span></div>
-          <SidebarBtn icon={<Clock className="w-3.5 h-3.5" />} label="Açık kaynak avantajları..." small onClick={() => onCategoryChange("chat")} />
+          {/* ── Geçmiş Sohbetler ─────────────────────────── */}
+          {filteredGroups.length > 0 ? (
+            filteredGroups.map(group => (
+              <div key={group.label}>
+                <div className="pt-4 pb-1 px-2">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-600">{group.label}</span>
+                </div>
+                {group.sessions.map(s => {
+                  const isRestoring = restoringSessionId === s.id;
+                  return (
+                    <button
+                      key={s.id}
+                      onClick={() => { onLoadSession(s); onCategoryChange("chat"); }}
+                      disabled={restoringSessionId !== null}
+                      className={`w-full flex items-center gap-2 px-3 py-2 text-left text-xs rounded-lg transition-all ${isRestoring ? "bg-white/5 text-white" : "text-zinc-500 hover:text-zinc-200 hover:bg-white/5"} disabled:cursor-wait`}
+                    >
+                      {isRestoring
+                        ? <Loader2 className="w-3 h-3 shrink-0 animate-spin text-[--accent]" />
+                        : <Clock className="w-3 h-3 shrink-0 opacity-50" />
+                      }
+                      <span className="truncate flex-1">{s.prompt}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            ))
+          ) : (
+            <div className="pt-6 px-3">
+              <p className="text-[10px] text-zinc-700 text-center">
+                {sessionGroups.length === 0 ? "Henüz kayıtlı sohbet yok." : "Arama sonucu bulunamadı."}
+              </p>
+            </div>
+          )}
         </nav>
+
         <div className="px-5 py-3 border-t border-[--border-soft] text-[10px] text-zinc-600 flex gap-3">
           <a href="#" className="hover:text-zinc-400 transition-colors">Kullanım Şartları</a>
           <a href="#" className="hover:text-zinc-400 transition-colors">Gizlilik</a>
@@ -348,14 +473,16 @@ function ModelCard({ model, result, animDelay }: { model: ModelProvider; result:
 // ─── Battle Voting (dynamic model count) ────────────────────
 const VOTE_BTN_STYLES: Record<ModelProvider, string> = {
   'openai/gpt-4o': "vote-btn-a",
+  'openai/gpt-oss-120b:free': "vote-btn-a",
   'anthropic/claude-3.7-sonnet': "vote-btn-b",
-  'google/gemini-pro-1.5': "vote-btn-tie",
-  'deepseek/deepseek-chat': "vote-btn-a",
-  'deepseek/deepseek-reasoner': "vote-btn-b",
+  'anthropic/claude-3.5-haiku': "vote-btn-b",
+  'google/gemini-3-pro-preview': "vote-btn-tie",
+  'google/gemini-3-flash-preview': "vote-btn-tie",
+  'deepseek/deepseek-reasoner': "vote-btn-a",
+  'deepseek/deepseek-chat': "vote-btn-b",
   'meta-llama/llama-3.3-70b-instruct': "vote-btn-a",
   'mistralai/mistral-large-2411': "vote-btn-b",
-  'anthropic/claude-3.5-haiku': "vote-btn-tie",
-  'google/gemini-2.0-flash-lite-001': "vote-btn-a",
+  'nvidia/nemotron-3-super-120b-a12b:free': "vote-btn-tie",
   'cohere/command-r-plus-08-2024': "vote-btn-b",
 };
 
@@ -378,10 +505,79 @@ function BattleVoting({ models, hasResults, onVote, voted }: { models: ModelProv
   );
 }
 
+// ─── User Menu ──────────────────────────────────────────────
+function UserMenu() {
+  const { user, signOut, openAuthModal } = useAuthStore();
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  if (!user) {
+    return (
+      <button
+        onClick={() => openAuthModal("login")}
+        className="px-4 py-1.5 text-xs font-semibold rounded-lg bg-white text-zinc-900 hover:bg-zinc-200 transition-all"
+      >
+        Giriş Yap
+      </button>
+    );
+  }
+
+  const displayName = user.user_metadata?.name || user.email?.split("@")[0] || "Kullanıcı";
+  const initials = displayName.split(" ").map((n: string) => n[0]).slice(0, 2).join("").toUpperCase();
+
+  return (
+    <div className="relative" ref={menuRef}>
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl hover:bg-white/5 transition-all"
+      >
+        <div className="w-6 h-6 rounded-full bg-[--accent] flex items-center justify-center text-[10px] font-black text-white">
+          {initials}
+        </div>
+        <span className="text-xs font-semibold text-zinc-300 max-w-[100px] truncate hidden sm:block">{displayName}</span>
+        <ChevronDown className="w-3 h-3 text-zinc-500" />
+      </button>
+
+      {open && (
+        <div className="absolute top-full right-0 mt-1.5 w-48 bg-[--surface-2] border border-[--border] rounded-xl shadow-2xl py-1.5 z-50 animate-fade-in">
+          <div className="px-3 py-2 border-b border-[--border-soft] mb-1">
+            <p className="text-xs font-bold text-white truncate">{displayName}</p>
+            <p className="text-[10px] text-zinc-500 truncate">{user.email}</p>
+          </div>
+          <button
+            onClick={() => { setOpen(false); }}
+            className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-zinc-400 hover:text-white hover:bg-white/5 transition-all text-left"
+          >
+            <UserCircle2 className="w-3.5 h-3.5" />Profilim
+          </button>
+          <button
+            onClick={() => { signOut(); setOpen(false); }}
+            className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/5 transition-all text-left"
+          >
+            <LogOut className="w-3.5 h-3.5" />Çıkış Yap
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main Page ──────────────────────────────────────────────
 export default function Dashboard() {
-  const { prompt, setPrompt, results, isGenerating, startGeneration, updateResult, finishGeneration } = useBenchmarkStore();
-  const [selectedModels, setSelectedModels] = useState<ModelProvider[]>(["openai/gpt-4o", "google/gemini-pro-1.5"]);
+  const { prompt, setPrompt, results, isGenerating, startGeneration, updateResult, finishGeneration, restoreSession, saveSessionToSupabase, saveResponseToSupabase, saveVoteToSupabase } = useBenchmarkStore();
+  const { initialize, user } = useAuthStore();
+  const { voteStats: globalVoteStats, overview: globalOverview, refresh: refreshGlobalStats } = useGlobalStats();
+  const { grouped: sessionGroups, refresh: refreshSessions } = useSessionHistory(user?.id ?? null);
+  const [selectedModels, setSelectedModels] = useState<ModelProvider[]>(["openai/gpt-4o", "google/gemini-3-pro-preview"]);
   const [votes, setVotes] = useState<VoteState>(() => {
     const initial: any = { tie: 0, both_bad: 0 };
     AVAILABLE_MODELS.forEach(m => initial[m] = 0);
@@ -396,6 +592,7 @@ export default function Dashboard() {
   const [activeMode, setActiveMode] = useState("Battle Mode");
   const [searchQuery, setSearchQuery] = useState("");
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
+  const [restoringSessionId, setRestoringSessionId] = useState<string | null>(null);
   const modelDropdownRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   // Use a ref to always have access to the latest prompt value
@@ -412,6 +609,12 @@ export default function Dashboard() {
   });
   // Show cards whenever generating or results exist
   const showCards = isGenerating || hasBeenGenerated;
+
+  useEffect(() => {
+    let cleanup: (() => void) | undefined;
+    initialize().then((fn) => { cleanup = fn; });
+    return () => { cleanup?.(); };
+  }, [initialize]);
 
   useEffect(() => { if (isGenerating) setVoted(null); }, [isGenerating]);
 
@@ -446,6 +649,43 @@ export default function Dashboard() {
     if (voted !== null) return;
     setVoted(key);
     setVotes(prev => ({ ...prev, [key]: (prev as Record<string, number>)[key] + 1 }));
+    if (user) {
+      saveVoteToSupabase(user.id, key).then(() => refreshGlobalStats());
+    }
+  };
+
+  const handleLoadSession = async (s: SessionRecord) => {
+    if (restoringSessionId === s.id) return;
+    setRestoringSessionId(s.id);
+
+    const supabase = (await import("@/lib/supabase")).getSupabaseBrowserClient();
+
+    const [{ data: responses }, { data: vote }] = await Promise.all([
+      supabase
+        .from("responses")
+        .select("model, content, time_taken_ms")
+        .eq("session_id", s.id),
+      supabase
+        .from("votes")
+        .select("vote_key")
+        .eq("session_id", s.id)
+        .maybeSingle(),
+    ]);
+
+    const models = s.models as ModelProvider[];
+    setSelectedModels(models);
+    restoreSession(s.id, models, responses ?? []);
+    setPrompt(s.prompt);
+    setLastPrompt(s.prompt);
+    setHasBeenGenerated(true);
+    setVoted((vote as { vote_key: VoteKey } | null)?.vote_key ?? null);
+
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+      textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 160) + "px";
+    }
+
+    setRestoringSessionId(null);
   };
 
   const handleNewChat = () => {
@@ -457,6 +697,7 @@ export default function Dashboard() {
     AVAILABLE_MODELS.forEach(m => initialVotes[m] = 0);
     setVotes(initialVotes);
     if (textareaRef.current) { textareaRef.current.style.height = "auto"; }
+    refreshSessions();
   };
 
   const toggleModel = (model: ModelProvider) => {
@@ -482,6 +723,12 @@ export default function Dashboard() {
     setLastPrompt(currentPrompt);
     startGeneration(currentModels);
 
+    // Kullanıcı giriş yapmışsa oturumu Supabase'e kaydet
+    let sessionId: string | null = null;
+    if (user) {
+      sessionId = await saveSessionToSupabase(user.id, currentPrompt, currentModels);
+    }
+
     try {
       const res = await fetch("/api/generate", {
         method: "POST",
@@ -495,12 +742,18 @@ export default function Dashboard() {
         data.results.forEach((r: any) => {
           const modelKey = (r.modelName || r.model || "").toLowerCase();
           if (modelKey) {
+            const content = r.generatedCode || r.code || "";
+            const timeTakenMs = r.latency || r.executionTime || 0;
             updateResult(modelKey, {
-              content: r.generatedCode || r.code || "",
+              content,
               loading: false,
               error: r.errorMessage || r.error || (r.status === "error" ? "Bilinmeyen Hata" : null),
-              timeTakenMs: r.latency || r.executionTime || 0,
+              timeTakenMs,
             });
+            // Yanıtı Supabase'e kaydet
+            if (user && sessionId && content) {
+              saveResponseToSupabase(sessionId, modelKey as ModelProvider, content, timeTakenMs);
+            }
           }
         });
       }
@@ -517,6 +770,7 @@ export default function Dashboard() {
       );
     } finally {
       finishGeneration();
+      if (user) refreshSessions();
     }
   };
 
@@ -533,7 +787,18 @@ export default function Dashboard() {
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: "var(--background)", color: "var(--foreground)" }}>
-      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} votes={votes} models={selectedModels} totalVotes={totalVotes} onNewChat={handleNewChat} activeCategory={activeCategory} onCategoryChange={setActiveCategory} searchQuery={searchQuery} onSearchChange={setSearchQuery} />
+      <AuthModal />
+      <Sidebar
+        open={sidebarOpen} onClose={() => setSidebarOpen(false)}
+        votes={votes} models={selectedModels} totalVotes={totalVotes}
+        onNewChat={handleNewChat} activeCategory={activeCategory} onCategoryChange={setActiveCategory}
+        searchQuery={searchQuery} onSearchChange={setSearchQuery}
+        sessionGroups={sessionGroups}
+        globalVoteStats={globalVoteStats}
+        globalOverview={globalOverview}
+        onLoadSession={handleLoadSession}
+        restoringSessionId={restoringSessionId}
+      />
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Top Bar */}
@@ -556,7 +821,7 @@ export default function Dashboard() {
             )}
           </div>
           <div className="flex-1" />
-          <button className="px-4 py-1.5 text-xs font-semibold rounded-lg bg-white text-zinc-900 hover:bg-zinc-200 transition-all">Giriş Yap</button>
+          <UserMenu />
         </header>
 
         {/* Content */}
@@ -635,26 +900,38 @@ export default function Dashboard() {
                       
                       {modelDropdownOpen && (
                         <div className="absolute bottom-full left-0 mb-2 z-[100] animate-fade-in">
-                          <div className="w-56 bg-zinc-900 border border-[--border-soft] rounded-xl shadow-2xl p-2 max-h-72 overflow-y-auto">
+                          <div className="w-60 bg-zinc-900 border border-[--border-soft] rounded-xl shadow-2xl p-2 max-h-80 overflow-y-auto">
                             <div className="text-[10px] text-zinc-400 px-2 py-1.5 font-bold mb-1 border-b border-[--border-soft] uppercase tracking-wider">En fazla 3 model seçilebilir</div>
-                            <div className="space-y-0.5 mt-1">
-                              {AVAILABLE_MODELS.map(m => {
-                                const active = selectedModels.includes(m);
-                                return (
-                                  <button
-                                    key={m}
-                                    onClick={() => toggleModel(m)}
-                                    className={`w-full text-left text-[11px] px-2.5 py-2 rounded-lg flex items-center justify-between transition-colors ${active ? "bg-white/10 text-white font-bold" : "text-zinc-400 hover:bg-white/5 hover:text-white"}`}
-                                  >
-                                    <span className="flex items-center gap-1.5">
-                                      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: MODEL_COLORS[m] }} />
-                                      {MODEL_DISPLAY[m]}
-                                    </span>
-                                    {active && <span className="text-emerald-400 text-xs">✓</span>}
-                                  </button>
-                                );
-                              })}
-                            </div>
+                            {[
+                              { label: "OpenAI", models: ['openai/gpt-4o', 'openai/gpt-oss-120b:free'] as ModelProvider[] },
+                              { label: "Anthropic", models: ['anthropic/claude-3.7-sonnet', 'anthropic/claude-3.5-haiku'] as ModelProvider[] },
+                              { label: "Google", models: ['google/gemini-3-pro-preview', 'google/gemini-3-flash-preview'] as ModelProvider[] },
+                              { label: "DeepSeek", models: ['deepseek/deepseek-reasoner', 'deepseek/deepseek-chat'] as ModelProvider[] },
+                              { label: "Meta", models: ['meta-llama/llama-3.3-70b-instruct'] as ModelProvider[] },
+                              { label: "Mistral", models: ['mistralai/mistral-large-2411'] as ModelProvider[] },
+                              { label: "NVIDIA", models: ['nvidia/nemotron-3-super-120b-a12b:free'] as ModelProvider[] },
+                              { label: "Cohere", models: ['cohere/command-r-plus-08-2024'] as ModelProvider[] },
+                            ].map(group => (
+                              <div key={group.label} className="mt-2">
+                                <div className="text-[9px] font-black uppercase tracking-widest text-zinc-600 px-2 pb-0.5">{group.label}</div>
+                                {group.models.map(m => {
+                                  const active = selectedModels.includes(m);
+                                  return (
+                                    <button
+                                      key={m}
+                                      onClick={() => toggleModel(m)}
+                                      className={`w-full text-left text-[11px] px-2.5 py-1.5 rounded-lg flex items-center justify-between transition-colors ${active ? "bg-white/10 text-white font-bold" : "text-zinc-400 hover:bg-white/5 hover:text-white"}`}
+                                    >
+                                      <span className="flex items-center gap-1.5">
+                                        <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: MODEL_COLORS[m] }} />
+                                        {MODEL_DISPLAY[m]}
+                                      </span>
+                                      {active && <span className="text-emerald-400 text-xs">✓</span>}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            ))}
                           </div>
                         </div>
                       )}
