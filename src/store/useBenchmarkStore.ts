@@ -122,7 +122,7 @@ export const useBenchmarkStore = create<BenchmarkState>((set, get) => ({
       const supabase = getSupabaseBrowserClient();
       const { data, error } = await supabase
         .from('responses')
-        .insert({ session_id: sessionId, model, content, time_taken_ms: timeTakenMs })
+        .insert({ session_id: sessionId, model, content, time_taken_ms: Math.round(Number(timeTakenMs)) })
         .select('id')
         .single();
       if (error) { console.error('[Supabase] Response kayıt hatası:', error.message); return null; }
