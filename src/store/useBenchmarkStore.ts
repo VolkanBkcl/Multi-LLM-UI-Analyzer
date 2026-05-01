@@ -11,6 +11,7 @@ export type ModelProvider =
   | 'deepseek/deepseek-reasoner'
   | 'deepseek/deepseek-chat'
   | 'meta-llama/llama-3.3-70b-instruct'
+  | 'qwen/qwen3-coder:free'
   | 'mistralai/mistral-large-2411'
   | 'nvidia/nemotron-3-super-120b-a12b:free'
   | 'cohere/command-r-plus-08-2024';

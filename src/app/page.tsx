@@ -36,6 +36,8 @@ const AVAILABLE_MODELS: ModelProvider[] = [
   'deepseek/deepseek-chat',
   // ── Meta ────────────────────────────────
   'meta-llama/llama-3.3-70b-instruct',
+  // ── Qwen (Alibaba) ──────────────────────
+  'qwen/qwen3-coder:free',
   // ── Mistral ─────────────────────────────
   'mistralai/mistral-large-2411',
   // ── NVIDIA ──────────────────────────────
@@ -54,6 +56,7 @@ const MODEL_DISPLAY: Record<ModelProvider, string> = {
   'deepseek/deepseek-reasoner': "DeepSeek R1",
   'deepseek/deepseek-chat': "DeepSeek V3",
   'meta-llama/llama-3.3-70b-instruct': "Llama 3.3 70B",
+  'qwen/qwen3-coder:free': "Qwen3 Coder (Free)",
   'mistralai/mistral-large-2411': "Mistral Large 2",
   'nvidia/nemotron-3-super-120b-a12b:free': "Nemotron 3 Super",
   'cohere/command-r-plus-08-2024': "Command R+",
@@ -69,6 +72,7 @@ const MODEL_COLORS: Record<ModelProvider, string> = {
   'deepseek/deepseek-reasoner': "#4d6bfe",
   'deepseek/deepseek-chat': "#6b7afe",
   'meta-llama/llama-3.3-70b-instruct': "#0668E1",
+  'qwen/qwen3-coder:free': "#7c3aed",
   'mistralai/mistral-large-2411': "#f2a900",
   'nvidia/nemotron-3-super-120b-a12b:free': "#76b900",
   'cohere/command-r-plus-08-2024': "#39594d",
@@ -84,6 +88,7 @@ const MODEL_BADGE_CLS: Record<ModelProvider, string> = {
   'deepseek/deepseek-reasoner': "bg-[#4d6bfe]/10 text-[#4d6bfe] border-[#4d6bfe]/20",
   'deepseek/deepseek-chat': "bg-[#6b7afe]/10 text-[#6b7afe] border-[#6b7afe]/20",
   'meta-llama/llama-3.3-70b-instruct': "bg-[#0668E1]/10 text-[#0668E1] border-[#0668E1]/20",
+  'qwen/qwen3-coder:free': "bg-[#7c3aed]/10 text-[#7c3aed] border-[#7c3aed]/20",
   'mistralai/mistral-large-2411': "bg-[#f2a900]/10 text-[#f2a900] border-[#f2a900]/20",
   'nvidia/nemotron-3-super-120b-a12b:free': "bg-[#76b900]/10 text-[#76b900] border-[#76b900]/20",
   'cohere/command-r-plus-08-2024': "bg-[#39594d]/10 text-[#39594d] border-[#39594d]/20",
@@ -481,6 +486,7 @@ const VOTE_BTN_STYLES: Record<ModelProvider, string> = {
   'deepseek/deepseek-reasoner': "vote-btn-a",
   'deepseek/deepseek-chat': "vote-btn-b",
   'meta-llama/llama-3.3-70b-instruct': "vote-btn-a",
+  'qwen/qwen3-coder:free': "vote-btn-tie",
   'mistralai/mistral-large-2411': "vote-btn-b",
   'nvidia/nemotron-3-super-120b-a12b:free': "vote-btn-tie",
   'cohere/command-r-plus-08-2024': "vote-btn-b",
@@ -908,6 +914,7 @@ export default function Dashboard() {
                               { label: "Google", models: ['google/gemini-3.1-pro-preview', 'google/gemini-3-flash-preview'] as ModelProvider[] },
                               { label: "DeepSeek", models: ['deepseek/deepseek-reasoner', 'deepseek/deepseek-chat'] as ModelProvider[] },
                               { label: "Meta", models: ['meta-llama/llama-3.3-70b-instruct'] as ModelProvider[] },
+                              { label: "Qwen", models: ['qwen/qwen3-coder:free'] as ModelProvider[] },
                               { label: "Mistral", models: ['mistralai/mistral-large-2411'] as ModelProvider[] },
                               { label: "NVIDIA", models: ['nvidia/nemotron-3-super-120b-a12b:free'] as ModelProvider[] },
                               { label: "Cohere", models: ['cohere/command-r-plus-08-2024'] as ModelProvider[] },

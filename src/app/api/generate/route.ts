@@ -54,11 +54,32 @@ export async function POST(request: Request) {
       }
     };
 
-    // Tüm modeller için Promise bloklarını tek seferde ve asenkron yaratıyoruz
-    const promises = models.map((modelId: string) => createModelPromise(modelId, prompt));
+    // Modelleri ücretli ve ücretsiz (:free) olarak ayır.
+    // Ücretli modeller paralel çalışır (800ms stagger).
+    // Ücretsiz modeller sıralı çalışır — biri tamamlanmadan diğeri başlamaz.
+    const STAGGER_MS = 800;
+    const paidModels = models.filter((id: string) => !id.endsWith(':free'));
+    const freeModels = models.filter((id: string) => id.endsWith(':free'));
 
-    // Promise.allSettled: Biri patlasa dahi (reject), diğer model sonuçlarının dönmesini garanti ederiz
-    const results = await Promise.allSettled(promises);
+    const paidPromises = paidModels.map((modelId: string, index: number) =>
+      new Promise<UnifiedResponse>((resolve, reject) => {
+        setTimeout(
+          () => createModelPromise(modelId, prompt).then(resolve).catch(reject),
+          index * STAGGER_MS
+        );
+      })
+    );
+
+    const freeResults: PromiseSettledResult<UnifiedResponse>[] = [];
+    for (const modelId of freeModels) {
+      const result = await createModelPromise(modelId, prompt)
+        .then((val): PromiseSettledResult<UnifiedResponse> => ({ status: 'fulfilled', value: val }))
+        .catch((err): PromiseSettledResult<UnifiedResponse> => ({ status: 'rejected', reason: err }));
+      freeResults.push(result);
+    }
+
+    const paidResults = await Promise.allSettled(paidPromises);
+    const results = [...paidResults, ...freeResults];
 
     // Elde edilen "fulfilled" veya "rejected" sonuçları standart UnifiedResponse objesine çeviriyoruz
     const formattedResults: UnifiedResponse[] = results.map((result) => {
