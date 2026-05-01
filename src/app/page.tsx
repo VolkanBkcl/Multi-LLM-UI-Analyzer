@@ -29,7 +29,7 @@ const AVAILABLE_MODELS: ModelProvider[] = [
   'anthropic/claude-3.7-sonnet',
   'anthropic/claude-3.5-haiku',
   // ── Google ──────────────────────────────
-  'google/gemini-3-pro-preview',
+  'google/gemini-3.1-pro-preview',
   'google/gemini-3-flash-preview',
   // ── DeepSeek ────────────────────────────
   'deepseek/deepseek-reasoner',
@@ -49,7 +49,7 @@ const MODEL_DISPLAY: Record<ModelProvider, string> = {
   'openai/gpt-oss-120b:free': "GPT-OSS 120B",
   'anthropic/claude-3.7-sonnet': "Claude 3.7 Sonnet",
   'anthropic/claude-3.5-haiku': "Claude 3.5 Haiku",
-  'google/gemini-3-pro-preview': "Gemini 3 Pro",
+  'google/gemini-3.1-pro-preview': "Gemini 3.1 Pro",
   'google/gemini-3-flash-preview': "Gemini 3 Flash",
   'deepseek/deepseek-reasoner': "DeepSeek R1",
   'deepseek/deepseek-chat': "DeepSeek V3",
@@ -64,7 +64,7 @@ const MODEL_COLORS: Record<ModelProvider, string> = {
   'openai/gpt-oss-120b:free': "#1a9b6c",
   'anthropic/claude-3.7-sonnet': "#d97757",
   'anthropic/claude-3.5-haiku': "#e8a07a",
-  'google/gemini-3-pro-preview': "#4285f4",
+  'google/gemini-3.1-pro-preview': "#4285f4",
   'google/gemini-3-flash-preview': "#34a853",
   'deepseek/deepseek-reasoner': "#4d6bfe",
   'deepseek/deepseek-chat': "#6b7afe",
@@ -79,7 +79,7 @@ const MODEL_BADGE_CLS: Record<ModelProvider, string> = {
   'openai/gpt-oss-120b:free': "bg-[#1a9b6c]/10 text-[#1a9b6c] border-[#1a9b6c]/20",
   'anthropic/claude-3.7-sonnet': "bg-[#d97757]/10 text-[#d97757] border-[#d97757]/20",
   'anthropic/claude-3.5-haiku': "bg-[#e8a07a]/10 text-[#e8a07a] border-[#e8a07a]/20",
-  'google/gemini-3-pro-preview': "bg-[#4285f4]/10 text-[#4285f4] border-[#4285f4]/20",
+  'google/gemini-3.1-pro-preview': "bg-[#4285f4]/10 text-[#4285f4] border-[#4285f4]/20",
   'google/gemini-3-flash-preview': "bg-[#34a853]/10 text-[#34a853] border-[#34a853]/20",
   'deepseek/deepseek-reasoner': "bg-[#4d6bfe]/10 text-[#4d6bfe] border-[#4d6bfe]/20",
   'deepseek/deepseek-chat': "bg-[#6b7afe]/10 text-[#6b7afe] border-[#6b7afe]/20",
@@ -476,7 +476,7 @@ const VOTE_BTN_STYLES: Record<ModelProvider, string> = {
   'openai/gpt-oss-120b:free': "vote-btn-a",
   'anthropic/claude-3.7-sonnet': "vote-btn-b",
   'anthropic/claude-3.5-haiku': "vote-btn-b",
-  'google/gemini-3-pro-preview': "vote-btn-tie",
+  'google/gemini-3.1-pro-preview': "vote-btn-tie",
   'google/gemini-3-flash-preview': "vote-btn-tie",
   'deepseek/deepseek-reasoner': "vote-btn-a",
   'deepseek/deepseek-chat': "vote-btn-b",
@@ -577,7 +577,7 @@ export default function Dashboard() {
   const { initialize, user } = useAuthStore();
   const { voteStats: globalVoteStats, overview: globalOverview, refresh: refreshGlobalStats } = useGlobalStats();
   const { grouped: sessionGroups, refresh: refreshSessions } = useSessionHistory(user?.id ?? null);
-  const [selectedModels, setSelectedModels] = useState<ModelProvider[]>(["openai/gpt-4o", "google/gemini-3-pro-preview"]);
+  const [selectedModels, setSelectedModels] = useState<ModelProvider[]>(["openai/gpt-4o", "google/gemini-3.1-pro-preview"]);
   const [votes, setVotes] = useState<VoteState>(() => {
     const initial: any = { tie: 0, both_bad: 0 };
     AVAILABLE_MODELS.forEach(m => initial[m] = 0);
@@ -905,7 +905,7 @@ export default function Dashboard() {
                             {[
                               { label: "OpenAI", models: ['openai/gpt-4o', 'openai/gpt-oss-120b:free'] as ModelProvider[] },
                               { label: "Anthropic", models: ['anthropic/claude-3.7-sonnet', 'anthropic/claude-3.5-haiku'] as ModelProvider[] },
-                              { label: "Google", models: ['google/gemini-3-pro-preview', 'google/gemini-3-flash-preview'] as ModelProvider[] },
+                              { label: "Google", models: ['google/gemini-3.1-pro-preview', 'google/gemini-3-flash-preview'] as ModelProvider[] },
                               { label: "DeepSeek", models: ['deepseek/deepseek-reasoner', 'deepseek/deepseek-chat'] as ModelProvider[] },
                               { label: "Meta", models: ['meta-llama/llama-3.3-70b-instruct'] as ModelProvider[] },
                               { label: "Mistral", models: ['mistralai/mistral-large-2411'] as ModelProvider[] },

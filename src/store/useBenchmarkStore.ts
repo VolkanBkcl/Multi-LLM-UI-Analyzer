@@ -6,7 +6,7 @@ export type ModelProvider =
   | 'openai/gpt-oss-120b:free'
   | 'anthropic/claude-3.7-sonnet'
   | 'anthropic/claude-3.5-haiku'
-  | 'google/gemini-3-pro-preview'
+  | 'google/gemini-3.1-pro-preview'
   | 'google/gemini-3-flash-preview'
   | 'deepseek/deepseek-reasoner'
   | 'deepseek/deepseek-chat'
