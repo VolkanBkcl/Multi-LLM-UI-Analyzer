@@ -11,6 +11,7 @@ export type ModelProvider =
   | 'deepseek/deepseek-reasoner'
   | 'deepseek/deepseek-chat'
   | 'meta-llama/llama-3.3-70b-instruct'
+  | 'meta-llama/llama-3.3-70b-instruct:free'
   | 'qwen/qwen3-coder:free'
   | 'mistralai/mistral-large-2411'
   | 'nvidia/nemotron-3-super-120b-a12b:free'
@@ -21,11 +22,14 @@ export type AnalysisResult = {
   performance: number;
   security: number;
   maintainability: number;
+  promptAdherence: number;
+  judgeModels?: string[];
   suggestions: {
     readability: string[];
     performance: string[];
     security: string[];
     maintainability: string[];
+    promptAdherence: string[];
   };
 };
 

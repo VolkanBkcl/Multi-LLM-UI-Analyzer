@@ -36,6 +36,7 @@ const AVAILABLE_MODELS: ModelProvider[] = [
   'deepseek/deepseek-chat',
   // ── Meta ────────────────────────────────
   'meta-llama/llama-3.3-70b-instruct',
+  'meta-llama/llama-3.3-70b-instruct:free',
   // ── Qwen (Alibaba) ──────────────────────
   'qwen/qwen3-coder:free',
   // ── Mistral ─────────────────────────────
@@ -56,6 +57,7 @@ const MODEL_DISPLAY: Record<ModelProvider, string> = {
   'deepseek/deepseek-reasoner': "DeepSeek R1",
   'deepseek/deepseek-chat': "DeepSeek V3",
   'meta-llama/llama-3.3-70b-instruct': "Llama 3.3 70B",
+  'meta-llama/llama-3.3-70b-instruct:free': "Llama 3.3 70B (Free)",
   'qwen/qwen3-coder:free': "Qwen3 Coder (Free)",
   'mistralai/mistral-large-2411': "Mistral Large 2",
   'nvidia/nemotron-3-super-120b-a12b:free': "Nemotron 3 Super",
@@ -72,6 +74,7 @@ const MODEL_COLORS: Record<ModelProvider, string> = {
   'deepseek/deepseek-reasoner': "#4d6bfe",
   'deepseek/deepseek-chat': "#6b7afe",
   'meta-llama/llama-3.3-70b-instruct': "#0668E1",
+  'meta-llama/llama-3.3-70b-instruct:free': "#1a7fe8",
   'qwen/qwen3-coder:free': "#7c3aed",
   'mistralai/mistral-large-2411': "#f2a900",
   'nvidia/nemotron-3-super-120b-a12b:free': "#76b900",
@@ -88,6 +91,7 @@ const MODEL_BADGE_CLS: Record<ModelProvider, string> = {
   'deepseek/deepseek-reasoner': "bg-[#4d6bfe]/10 text-[#4d6bfe] border-[#4d6bfe]/20",
   'deepseek/deepseek-chat': "bg-[#6b7afe]/10 text-[#6b7afe] border-[#6b7afe]/20",
   'meta-llama/llama-3.3-70b-instruct': "bg-[#0668E1]/10 text-[#0668E1] border-[#0668E1]/20",
+  'meta-llama/llama-3.3-70b-instruct:free': "bg-[#1a7fe8]/10 text-[#1a7fe8] border-[#1a7fe8]/20",
   'qwen/qwen3-coder:free': "bg-[#7c3aed]/10 text-[#7c3aed] border-[#7c3aed]/20",
   'mistralai/mistral-large-2411': "bg-[#f2a900]/10 text-[#f2a900] border-[#f2a900]/20",
   'nvidia/nemotron-3-super-120b-a12b:free': "bg-[#76b900]/10 text-[#76b900] border-[#76b900]/20",
@@ -294,8 +298,8 @@ function SidebarBtn({ icon, label, active, small, onClick }: { icon: React.React
 
 // ─── AI Review UI ───────────────────────────────────────────
 function CategoryScore({ title, score, suggestions }: { title: string, score: number, suggestions: string[] }) {
-  const isGood = score >= 8;
-  const isWarn = score >= 5 && score < 8;
+  const isGood = score >= 80;
+  const isWarn = score >= 50 && score < 80;
   
   const colorCls = isGood ? "bg-emerald-500" : isWarn ? "bg-amber-500" : "bg-red-500";
   const textCls = isGood ? "text-emerald-400" : isWarn ? "text-amber-400" : "text-red-400";
@@ -305,10 +309,10 @@ function CategoryScore({ title, score, suggestions }: { title: string, score: nu
     <div className={`p-2.5 rounded-lg border ${bgCls}`}>
        <div className="flex items-center justify-between mb-1.5">
           <span className={`text-[11px] font-bold ${textCls}`}>{title}</span>
-          <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${colorCls} text-white`}>{score}/10</span>
+          <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${colorCls} text-white`}>{score}/100</span>
        </div>
        <div className="h-1.5 w-full bg-black/40 rounded-full overflow-hidden mb-2">
-         <div className={`h-full ${colorCls} transition-all duration-1000`} style={{ width: `${score * 10}%` }} />
+         <div className={`h-full ${colorCls} transition-all duration-1000`} style={{ width: `${score}%` }} />
        </div>
        {suggestions && suggestions.length > 0 && (
          <ul className="space-y-1 mt-2">
@@ -327,6 +331,7 @@ function CategoryScore({ title, score, suggestions }: { title: string, score: nu
 // ─── Model Card ─────────────────────────────────────────────
 function ModelCard({ model, result, animDelay }: { model: ModelProvider; result: ModelResult | undefined; animDelay: string }) {
   const updateResult = useBenchmarkStore(state => state.updateResult);
+  const prompt = useBenchmarkStore(state => state.prompt);
   const [copied, setCopied] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const isLoading = result?.loading ?? false;
@@ -350,7 +355,7 @@ function ModelCard({ model, result, animDelay }: { model: ModelProvider; result:
       const res = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: result.content })
+        body: JSON.stringify({ code: result.content, prompt })
       });
       
       const data = await res.json();
@@ -431,12 +436,27 @@ function ModelCard({ model, result, animDelay }: { model: ModelProvider; result:
              
              {result!.analysisResult && (
                <div className="mt-4 space-y-3 animate-fade-in border-t border-[--border-soft] pt-3">
-                  <h4 className="text-xs font-bold text-zinc-300 mb-2">AI Kod İnceleme Sonucu</h4>
+                  <div className="flex flex-col gap-1.5 mb-2">
+                    <h4 className="text-xs font-bold text-zinc-300">AI Kod İnceleme Sonucu</h4>
+                    {result!.analysisResult.judgeModels && result!.analysisResult.judgeModels.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {result!.analysisResult.judgeModels.map((m) => (
+                          <span key={m} className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-[--accent]/10 text-[--accent] border border-[--accent]/20">
+                            {m.split('/')[1] ?? m}
+                          </span>
+                        ))}
+                        <span className="text-[9px] text-zinc-500 self-center">ortalaması</span>
+                      </div>
+                    )}
+                  </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                      <CategoryScore title="Okunabilirlik" score={result!.analysisResult.readability} suggestions={result!.analysisResult.suggestions?.readability} />
                      <CategoryScore title="Performans" score={result!.analysisResult.performance} suggestions={result!.analysisResult.suggestions?.performance} />
                      <CategoryScore title="Güvenlik" score={result!.analysisResult.security} suggestions={result!.analysisResult.suggestions?.security} />
                      <CategoryScore title="Sürdürülebilirlik" score={result!.analysisResult.maintainability} suggestions={result!.analysisResult.suggestions?.maintainability} />
+                     <div className="sm:col-span-2">
+                       <CategoryScore title="Prompt Uyumu" score={result!.analysisResult.promptAdherence} suggestions={result!.analysisResult.suggestions?.promptAdherence} />
+                     </div>
                   </div>
                </div>
              )}
@@ -486,6 +506,7 @@ const VOTE_BTN_STYLES: Record<ModelProvider, string> = {
   'deepseek/deepseek-reasoner': "vote-btn-a",
   'deepseek/deepseek-chat': "vote-btn-b",
   'meta-llama/llama-3.3-70b-instruct': "vote-btn-a",
+  'meta-llama/llama-3.3-70b-instruct:free': "vote-btn-a",
   'qwen/qwen3-coder:free': "vote-btn-tie",
   'mistralai/mistral-large-2411': "vote-btn-b",
   'nvidia/nemotron-3-super-120b-a12b:free': "vote-btn-tie",
@@ -913,7 +934,7 @@ export default function Dashboard() {
                               { label: "Anthropic", models: ['anthropic/claude-3.7-sonnet', 'anthropic/claude-3.5-haiku'] as ModelProvider[] },
                               { label: "Google", models: ['google/gemini-3.1-pro-preview', 'google/gemini-3-flash-preview'] as ModelProvider[] },
                               { label: "DeepSeek", models: ['deepseek/deepseek-reasoner', 'deepseek/deepseek-chat'] as ModelProvider[] },
-                              { label: "Meta", models: ['meta-llama/llama-3.3-70b-instruct'] as ModelProvider[] },
+                              { label: "Meta", models: ['meta-llama/llama-3.3-70b-instruct', 'meta-llama/llama-3.3-70b-instruct:free'] as ModelProvider[] },
                               { label: "Qwen", models: ['qwen/qwen3-coder:free'] as ModelProvider[] },
                               { label: "Mistral", models: ['mistralai/mistral-large-2411'] as ModelProvider[] },
                               { label: "NVIDIA", models: ['nvidia/nemotron-3-super-120b-a12b:free'] as ModelProvider[] },

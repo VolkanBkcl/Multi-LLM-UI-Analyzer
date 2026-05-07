@@ -51,13 +51,15 @@ export class OpenRouterService {
       if (response.status === 429) {
         const errorData = await response.json().catch(() => ({}));
         const errMsg = errorData?.error?.message || errorData?.message || 'İstek sınırı aşıldı';
+        lastError = new Error(`Rate limit aşıldı (429): ${errMsg}`);
+
+        if (attempt >= RETRY_DELAYS_MS.length) break;
+
         const retryAfterHeader = response.headers.get('Retry-After');
-        const fallbackDelay = RETRY_DELAYS_MS[attempt] ?? 60_000;
         const waitMs = retryAfterHeader
           ? Math.min(parseInt(retryAfterHeader, 10) * 1000, 70_000)
-          : fallbackDelay;
+          : RETRY_DELAYS_MS[attempt];
         console.warn(`[OpenRouter] ${modelId} — 429 rate limit (${errMsg}), ${waitMs / 1000}s bekleniyor... (deneme ${attempt + 1}/${RETRY_DELAYS_MS.length})`);
-        lastError = new Error(`Rate limit aşıldı (429): ${errMsg}`);
         await sleep(waitMs);
         continue;
       }
