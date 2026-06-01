@@ -26,21 +26,20 @@ const AVAILABLE_MODELS: ModelProvider[] = [
   'openai/gpt-4o',
   'openai/gpt-oss-120b:free',
   // ── Anthropic ───────────────────────────
-  'anthropic/claude-3.7-sonnet',
   'anthropic/claude-3.5-haiku',
   // ── Google ──────────────────────────────
   'google/gemini-3.1-pro-preview',
   'google/gemini-3-flash-preview',
+  'google/gemini-3.5-flash',
   // ── DeepSeek ────────────────────────────
-  'deepseek/deepseek-reasoner',
   'deepseek/deepseek-chat',
+  'deepseek/deepseek-v4-pro',
   // ── Meta ────────────────────────────────
   'meta-llama/llama-3.3-70b-instruct',
   'meta-llama/llama-3.3-70b-instruct:free',
   // ── Qwen (Alibaba) ──────────────────────
   'qwen/qwen3-coder:free',
-  // ── Mistral ─────────────────────────────
-  'mistralai/mistral-large-2411',
+  'qwen/qwen3.6-plus',
   // ── NVIDIA ──────────────────────────────
   'nvidia/nemotron-3-super-120b-a12b:free',
   // ── Cohere ──────────────────────────────
@@ -50,16 +49,16 @@ const AVAILABLE_MODELS: ModelProvider[] = [
 const MODEL_DISPLAY: Record<ModelProvider, string> = {
   'openai/gpt-4o': "GPT-4o",
   'openai/gpt-oss-120b:free': "GPT-OSS 120B",
-  'anthropic/claude-3.7-sonnet': "Claude 3.7 Sonnet",
   'anthropic/claude-3.5-haiku': "Claude 3.5 Haiku",
   'google/gemini-3.1-pro-preview': "Gemini 3.1 Pro",
   'google/gemini-3-flash-preview': "Gemini 3 Flash",
-  'deepseek/deepseek-reasoner': "DeepSeek R1",
+  'google/gemini-3.5-flash': "Gemini 3.5 Flash",
   'deepseek/deepseek-chat': "DeepSeek V3",
+  'deepseek/deepseek-v4-pro': "DeepSeek V4 Pro",
   'meta-llama/llama-3.3-70b-instruct': "Llama 3.3 70B",
   'meta-llama/llama-3.3-70b-instruct:free': "Llama 3.3 70B (Free)",
   'qwen/qwen3-coder:free': "Qwen3 Coder (Free)",
-  'mistralai/mistral-large-2411': "Mistral Large 2",
+  'qwen/qwen3.6-plus': "Qwen3.6 Plus",
   'nvidia/nemotron-3-super-120b-a12b:free': "Nemotron 3 Super",
   'cohere/command-r-plus-08-2024': "Command R+",
 };
@@ -67,16 +66,16 @@ const MODEL_DISPLAY: Record<ModelProvider, string> = {
 const MODEL_COLORS: Record<ModelProvider, string> = {
   'openai/gpt-4o': "#10a37f",
   'openai/gpt-oss-120b:free': "#1a9b6c",
-  'anthropic/claude-3.7-sonnet': "#d97757",
   'anthropic/claude-3.5-haiku': "#e8a07a",
   'google/gemini-3.1-pro-preview': "#4285f4",
   'google/gemini-3-flash-preview': "#34a853",
-  'deepseek/deepseek-reasoner': "#4d6bfe",
+  'google/gemini-3.5-flash': "#0f9d58",
   'deepseek/deepseek-chat': "#6b7afe",
+  'deepseek/deepseek-v4-pro': "#2541e8",
   'meta-llama/llama-3.3-70b-instruct': "#0668E1",
   'meta-llama/llama-3.3-70b-instruct:free': "#1a7fe8",
   'qwen/qwen3-coder:free': "#7c3aed",
-  'mistralai/mistral-large-2411': "#f2a900",
+  'qwen/qwen3.6-plus': "#9333ea",
   'nvidia/nemotron-3-super-120b-a12b:free': "#76b900",
   'cohere/command-r-plus-08-2024': "#39594d",
 };
@@ -84,16 +83,16 @@ const MODEL_COLORS: Record<ModelProvider, string> = {
 const MODEL_BADGE_CLS: Record<ModelProvider, string> = {
   'openai/gpt-4o': "bg-[#10a37f]/10 text-[#10a37f] border-[#10a37f]/20",
   'openai/gpt-oss-120b:free': "bg-[#1a9b6c]/10 text-[#1a9b6c] border-[#1a9b6c]/20",
-  'anthropic/claude-3.7-sonnet': "bg-[#d97757]/10 text-[#d97757] border-[#d97757]/20",
   'anthropic/claude-3.5-haiku': "bg-[#e8a07a]/10 text-[#e8a07a] border-[#e8a07a]/20",
   'google/gemini-3.1-pro-preview': "bg-[#4285f4]/10 text-[#4285f4] border-[#4285f4]/20",
   'google/gemini-3-flash-preview': "bg-[#34a853]/10 text-[#34a853] border-[#34a853]/20",
-  'deepseek/deepseek-reasoner': "bg-[#4d6bfe]/10 text-[#4d6bfe] border-[#4d6bfe]/20",
+  'google/gemini-3.5-flash': "bg-[#0f9d58]/10 text-[#0f9d58] border-[#0f9d58]/20",
   'deepseek/deepseek-chat': "bg-[#6b7afe]/10 text-[#6b7afe] border-[#6b7afe]/20",
+  'deepseek/deepseek-v4-pro': "bg-[#2541e8]/10 text-[#2541e8] border-[#2541e8]/20",
   'meta-llama/llama-3.3-70b-instruct': "bg-[#0668E1]/10 text-[#0668E1] border-[#0668E1]/20",
   'meta-llama/llama-3.3-70b-instruct:free': "bg-[#1a7fe8]/10 text-[#1a7fe8] border-[#1a7fe8]/20",
   'qwen/qwen3-coder:free': "bg-[#7c3aed]/10 text-[#7c3aed] border-[#7c3aed]/20",
-  'mistralai/mistral-large-2411': "bg-[#f2a900]/10 text-[#f2a900] border-[#f2a900]/20",
+  'qwen/qwen3.6-plus': "bg-[#9333ea]/10 text-[#9333ea] border-[#9333ea]/20",
   'nvidia/nemotron-3-super-120b-a12b:free': "bg-[#76b900]/10 text-[#76b900] border-[#76b900]/20",
   'cohere/command-r-plus-08-2024': "bg-[#39594d]/10 text-[#39594d] border-[#39594d]/20",
 };
@@ -499,16 +498,16 @@ function ModelCard({ model, result, animDelay }: { model: ModelProvider; result:
 const VOTE_BTN_STYLES: Record<ModelProvider, string> = {
   'openai/gpt-4o': "vote-btn-a",
   'openai/gpt-oss-120b:free': "vote-btn-a",
-  'anthropic/claude-3.7-sonnet': "vote-btn-b",
   'anthropic/claude-3.5-haiku': "vote-btn-b",
   'google/gemini-3.1-pro-preview': "vote-btn-tie",
   'google/gemini-3-flash-preview': "vote-btn-tie",
-  'deepseek/deepseek-reasoner': "vote-btn-a",
+  'google/gemini-3.5-flash': "vote-btn-tie",
   'deepseek/deepseek-chat': "vote-btn-b",
+  'deepseek/deepseek-v4-pro': "vote-btn-a",
   'meta-llama/llama-3.3-70b-instruct': "vote-btn-a",
   'meta-llama/llama-3.3-70b-instruct:free': "vote-btn-a",
   'qwen/qwen3-coder:free': "vote-btn-tie",
-  'mistralai/mistral-large-2411': "vote-btn-b",
+  'qwen/qwen3.6-plus': "vote-btn-tie",
   'nvidia/nemotron-3-super-120b-a12b:free': "vote-btn-tie",
   'cohere/command-r-plus-08-2024': "vote-btn-b",
 };
@@ -604,7 +603,7 @@ export default function Dashboard() {
   const { initialize, user } = useAuthStore();
   const { voteStats: globalVoteStats, overview: globalOverview, refresh: refreshGlobalStats } = useGlobalStats();
   const { grouped: sessionGroups, refresh: refreshSessions } = useSessionHistory(user?.id ?? null);
-  const [selectedModels, setSelectedModels] = useState<ModelProvider[]>(["openai/gpt-4o", "google/gemini-3.1-pro-preview"]);
+  const [selectedModels, setSelectedModels] = useState<ModelProvider[]>(["deepseek/deepseek-v4-pro", "qwen/qwen3.6-plus"]);
   const [votes, setVotes] = useState<VoteState>(() => {
     const initial: any = { tie: 0, both_bad: 0 };
     AVAILABLE_MODELS.forEach(m => initial[m] = 0);
@@ -931,12 +930,11 @@ export default function Dashboard() {
                             <div className="text-[10px] text-zinc-400 px-2 py-1.5 font-bold mb-1 border-b border-[--border-soft] uppercase tracking-wider">En fazla 3 model seçilebilir</div>
                             {[
                               { label: "OpenAI", models: ['openai/gpt-4o', 'openai/gpt-oss-120b:free'] as ModelProvider[] },
-                              { label: "Anthropic", models: ['anthropic/claude-3.7-sonnet', 'anthropic/claude-3.5-haiku'] as ModelProvider[] },
-                              { label: "Google", models: ['google/gemini-3.1-pro-preview', 'google/gemini-3-flash-preview'] as ModelProvider[] },
-                              { label: "DeepSeek", models: ['deepseek/deepseek-reasoner', 'deepseek/deepseek-chat'] as ModelProvider[] },
+                              { label: "Anthropic", models: ['anthropic/claude-3.5-haiku'] as ModelProvider[] },
+                              { label: "Google", models: ['google/gemini-3.1-pro-preview', 'google/gemini-3-flash-preview', 'google/gemini-3.5-flash'] as ModelProvider[] },
+                              { label: "DeepSeek", models: ['deepseek/deepseek-chat', 'deepseek/deepseek-v4-pro'] as ModelProvider[] },
                               { label: "Meta", models: ['meta-llama/llama-3.3-70b-instruct', 'meta-llama/llama-3.3-70b-instruct:free'] as ModelProvider[] },
-                              { label: "Qwen", models: ['qwen/qwen3-coder:free'] as ModelProvider[] },
-                              { label: "Mistral", models: ['mistralai/mistral-large-2411'] as ModelProvider[] },
+                              { label: "Qwen", models: ['qwen/qwen3-coder:free', 'qwen/qwen3.6-plus'] as ModelProvider[] },
                               { label: "NVIDIA", models: ['nvidia/nemotron-3-super-120b-a12b:free'] as ModelProvider[] },
                               { label: "Cohere", models: ['cohere/command-r-plus-08-2024'] as ModelProvider[] },
                             ].map(group => (

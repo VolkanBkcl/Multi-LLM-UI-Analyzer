@@ -4,16 +4,16 @@ import { getSupabaseBrowserClient } from '@/lib/supabase';
 export type ModelProvider = 
   | 'openai/gpt-4o'
   | 'openai/gpt-oss-120b:free'
-  | 'anthropic/claude-3.7-sonnet'
   | 'anthropic/claude-3.5-haiku'
   | 'google/gemini-3.1-pro-preview'
   | 'google/gemini-3-flash-preview'
-  | 'deepseek/deepseek-reasoner'
+  | 'google/gemini-3.5-flash'
   | 'deepseek/deepseek-chat'
+  | 'deepseek/deepseek-v4-pro'
   | 'meta-llama/llama-3.3-70b-instruct'
   | 'meta-llama/llama-3.3-70b-instruct:free'
   | 'qwen/qwen3-coder:free'
-  | 'mistralai/mistral-large-2411'
+  | 'qwen/qwen3.6-plus'
   | 'nvidia/nemotron-3-super-120b-a12b:free'
   | 'cohere/command-r-plus-08-2024';
 
