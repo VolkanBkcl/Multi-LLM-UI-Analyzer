@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# supabase cli temp files (migrations klasörü repoda kalmalı)
+supabase/.temp/
+
+# claude code session files
+.claude/
