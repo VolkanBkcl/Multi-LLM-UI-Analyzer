@@ -17,6 +17,11 @@ export type ModelProvider =
   | 'nvidia/nemotron-3-super-120b-a12b:free'
   | 'cohere/command-r-plus-08-2024';
 
+export type DecisionMethod =
+  | 'dual_judge_consensus'
+  | 'arbitration_j3'
+  | 'arbitration_failed_fallback_average';
+
 export type AnalysisResult = {
   readability: number;
   performance: number;
@@ -30,6 +35,18 @@ export type AnalysisResult = {
     security: string[];
     maintainability: string[];
     promptAdherence: string[];
+  };
+  // Çift hakem + tahkim meta verileri (opsiyonel — eski kayıtlar için undefined olabilir):
+  overallScore?: number;
+  decisionMethod?: DecisionMethod;
+  disagreedMetrics?: string[];
+  j3Model?: string | null;
+  promptAlignmentDetail?: {
+    programmaticScore: number;
+    semanticScore: number;
+    violations: string[];
+    totalRules: number;
+    passedRules: number;
   };
 };
 
@@ -62,6 +79,11 @@ interface BenchmarkState {
   saveResponseToSupabase: (sessionId: string, model: ModelProvider, content: string, timeTakenMs: number) => Promise<string | null>;
   saveVoteToSupabase: (userId: string, voteKey: string) => Promise<void>;
   saveFavoriteToSupabase: (userId: string, responseId: string) => Promise<void>;
+  saveEvaluationToSupabase: (
+    userId: string,
+    model: ModelProvider,
+    result: AnalysisResult,
+  ) => Promise<void>;
 }
 
 export const useBenchmarkStore = create<BenchmarkState>((set, get) => ({
@@ -161,6 +183,32 @@ export const useBenchmarkStore = create<BenchmarkState>((set, get) => ({
       if (error) console.error('[Supabase] Favori kayıt hatası:', error.message);
     } catch (e) {
       console.error('[Supabase] Favori kayıt exception:', e);
+    }
+  },
+
+  saveEvaluationToSupabase: async (userId, model, result) => {
+    const sessionId = get().currentSessionId;
+    if (!sessionId) return;
+    try {
+      const supabase = getSupabaseBrowserClient();
+      const { error } = await supabase.from('evaluations').insert({
+        session_id: sessionId,
+        user_id: userId,
+        model,
+        readability: result.readability,
+        performance: result.performance,
+        security: result.security,
+        maintainability: result.maintainability,
+        prompt_adherence: result.promptAdherence,
+        overall_score: result.overallScore ?? null,
+        decision_method: result.decisionMethod ?? null,
+        disagreed_metrics: result.disagreedMetrics ?? null,
+        j3_model: result.j3Model ?? null,
+        prompt_alignment_detail: result.promptAlignmentDetail ?? null,
+      });
+      if (error) console.error('[Supabase] Değerlendirme kayıt hatası:', error.message);
+    } catch (e) {
+      console.error('[Supabase] Değerlendirme kayıt exception:', e);
     }
   },
 }));

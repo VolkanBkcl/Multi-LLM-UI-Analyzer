@@ -331,6 +331,8 @@ function CategoryScore({ title, score, suggestions }: { title: string, score: nu
 function ModelCard({ model, result, animDelay }: { model: ModelProvider; result: ModelResult | undefined; animDelay: string }) {
   const updateResult = useBenchmarkStore(state => state.updateResult);
   const prompt = useBenchmarkStore(state => state.prompt);
+  const saveEvaluationToSupabase = useBenchmarkStore(state => state.saveEvaluationToSupabase);
+  const user = useAuthStore(state => state.user);
   const [copied, setCopied] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const isLoading = result?.loading ?? false;
@@ -364,6 +366,11 @@ function ModelCard({ model, result, animDelay }: { model: ModelProvider; result:
       }
       
       updateResult(model, { isAnalyzing: false, analysisResult: data.result });
+
+      // Giriş yapmış ve aktif oturumu olan kullanıcılar için sonucu kalıcı olarak kaydet.
+      if (user?.id) {
+        saveEvaluationToSupabase(user.id, model, data.result);
+      }
     } catch (err: any) {
       updateResult(model, { isAnalyzing: false, analysisError: err.message });
     }
@@ -444,7 +451,15 @@ function ModelCard({ model, result, animDelay }: { model: ModelProvider; result:
                             {m.split('/')[1] ?? m}
                           </span>
                         ))}
-                        <span className="text-[9px] text-zinc-500 self-center">ortalaması</span>
+                        {result!.analysisResult.decisionMethod === 'arbitration_j3' ? (
+                          <span className="text-[9px] font-semibold self-center px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20" title={`Uyuşmazlık: ${(result!.analysisResult.disagreedMetrics ?? []).join(', ')}`}>
+                            tahkim (J3)
+                          </span>
+                        ) : result!.analysisResult.decisionMethod === 'arbitration_failed_fallback_average' ? (
+                          <span className="text-[9px] text-zinc-500 self-center">tahkim başarısız · ortalama</span>
+                        ) : (
+                          <span className="text-[9px] text-zinc-500 self-center">konsensüs</span>
+                        )}
                       </div>
                     )}
                   </div>

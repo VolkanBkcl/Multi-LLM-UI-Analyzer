@@ -1,3 +1,5 @@
+import { SYSTEM_CONSTRAINTS } from '@/lib/prompts';
+
 const RETRY_DELAYS_MS = [10000, 30000, 60000];
 
 function sleep(ms: number): Promise<void> {
@@ -41,7 +43,7 @@ export class OpenRouterService {
           messages: [
             {
               role: 'system',
-              content: 'Sen uzman bir tam-yığın (full-stack) yazılım geliştiricisisin. Frontend sorularında modern UI/UX ve estetik konusunda üst düzey yetkinliğe sahipsin; backend, algoritma ve sistem tasarımı sorularında ise temiz mimari ve en iyi pratikleri uygularsın. Ürettiğin her kod üretime hazır (production-ready), okunabilir ve çalışır durumda olmalıdır. Asla eksik veya yer tutucu (placeholder) kod verme. Frontend sorularında gerekirse güzel renk paletleri, pürüzsüz animasyonlar ve modern gölgelendirmeler kullan; backend veya genel sorularda en iyi pratiklere ve temiz koda odaklan.',
+              content: SYSTEM_CONSTRAINTS,
             },
             { role: 'user', content: prompt },
           ],
