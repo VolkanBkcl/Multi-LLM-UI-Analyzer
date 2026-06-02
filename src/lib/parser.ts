@@ -1,29 +1,43 @@
 /**
- * LLM'den gelen Markdown formatındaki metinden sadece en büyük veya ilk kod bloğunu çıkarır.
- * Eğer kod bloğu bulamazsa metnin kendisini döndürür.
+ * LLM'den gelen Markdown formatındaki metinden kod bloğunu çıkarır.
+ *
+ * ÖNEMLİ: Üretilen kod (özellikle AI sohbet/IDE arayüzleri) kendi içinde markdown kod bloğu (```)
+ * taşıyabilir — örn. bir mesaj string'i `content: "Here's the code:\n```jsx\n...\n```"`. Bu yüzden
+ * NON-GREEDY (ilk kapanışa kadar) ayıklama erken keser ve kodun büyük kısmı kaybolur. Bunun yerine
+ * İLK açılış fence'inden SON kapanış fence'ine kadar olan içeriği alırız (iç ```'leri kodun parçası sayar).
+ *
+ * Kod bloğu bulamazsa HTML yapısına, o da yoksa metnin kendisine düşer.
  */
 export function extractCodeFromMarkdown(text: string): string {
   if (!text) return '';
+  const trimmed = text.trim();
 
-  // 1. Önce en standart markdown kod bloklarını arayalım (```html ... ``` veya ```jsx ... ``` vb.)
-  // Modeli bazen dil ismini yazmadan sadece ``` ile kod bloğu açabilir.
+  const fences = [...trimmed.matchAll(/```/g)];
+  if (fences.length >= 2) {
+    const firstFenceIdx = fences[0].index ?? 0;
+    // İlk fence satırındaki dil etiketini (```jsx) atla: o satırın sonundaki newline'dan sonrası kod.
+    const newlineAfterOpen = trimmed.indexOf('\n', firstFenceIdx);
+    const start = newlineAfterOpen === -1 ? firstFenceIdx + 3 : newlineAfterOpen + 1;
+    const lastFenceIdx = fences[fences.length - 1].index ?? trimmed.length;
+    if (lastFenceIdx > start) {
+      return trimmed.slice(start, lastFenceIdx).trim();
+    }
+  }
+
+  // Tek/0 fence → klasik (non-greedy) tek blok denemesi.
   const blockRegex = /```[\w]*\n([\s\S]*?)```/;
-  const match = text.match(blockRegex);
-
+  const match = trimmed.match(blockRegex);
   if (match && match[1]) {
-    return match[1].trim(); // Sadece kodun kendisini döndür
+    return match[1].trim();
   }
 
-  // 2. Eğer markdown bloğu (```) hiç yoksa ama içeride <html> veya <button> gibi etiketlerle başlayan 
-  // büyük bir yığın varsa, temel bir HTML ayıklaması deneyebiliriz (opsiyonel fallback)
+  // Fence yoksa ama <html>/<div>/<button> gibi bir etiketle başlayan büyük bir yığın varsa onu al.
   const htmlRegex = /(<[a-z][\s\S]*>)/i;
-  const htmlMatch = text.match(htmlRegex);
-  
+  const htmlMatch = trimmed.match(htmlRegex);
   if (htmlMatch && htmlMatch[1]) {
-     return htmlMatch[1].trim();
+    return htmlMatch[1].trim();
   }
 
-  // Hiçbir şekilde kod bloğu veya HTML yapısı bulamazsa, LLM sadece düz metin (özür dilerim vb.) yazmıştır.
-  // Bu durumda metnin tamamını temizleyerek geri ver.
-  return text.trim();
+  // Hiçbir kod yapısı yoksa metnin kendisini döndür (model düz metin / özür yazmış olabilir).
+  return trimmed;
 }

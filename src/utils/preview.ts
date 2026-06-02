@@ -26,8 +26,11 @@ const isReactCode = (code: string): boolean =>
   /\buse(State|Effect|Ref|Memo|Callback)\s*\(/.test(code) ||
   /className=/.test(code);
 
+// NOT: `^\s*` ile başlangıca sabitlenir. Aksi halde, içinde HTML örneği (string) taşıyan bir React
+// bileşeni (`const html = \`<!DOCTYPE html>...\``) yanlışlıkla "tam belge" sanılır ve React yerine
+// ham HTML olarak basılır.
 const isFullHtmlDocument = (code: string): boolean =>
-  /<!doctype html/i.test(code) || /<html[\s>]/i.test(code);
+  /^\s*<!doctype html/i.test(code) || /^\s*<html[\s>]/i.test(code);
 
 /** Tailwind utility class deseni içeriyor mu? */
 const looksLikeTailwind = (code: string): boolean =>
@@ -84,9 +87,17 @@ const transformReactCode = (code: string): string => {
 
   out = rewriteImports(out);
 
-  const hasDefault = /export\s+default\b/.test(out);
+  // `export default`'un SON geçtiği yeri dönüştür. Gerçek üst-seviye export genelde en sonda olur;
+  // string'e gömülü örnek kodlar (ör. bir AI sohbet UI'ında gösterilen `code: \`...export default...\``)
+  // ondan önce gelir. İlk eşleşmeyi alırsak gömülü örneği yakalayıp gerçek bileşeni kaçırırız.
+  const defaultMatches = [...out.matchAll(/export\s+default\s+/g)];
+  const hasDefault = defaultMatches.length > 0;
   if (hasDefault) {
-    out = out.replace(/export\s+default\s+/, 'var __LoominaDefault = ');
+    const last = defaultMatches[defaultMatches.length - 1];
+    out =
+      out.slice(0, last.index) +
+      'var __LoominaDefault = ' +
+      out.slice(last.index! + last[0].length);
   }
   // named export anahtar sözcüklerini kaldır: `export const X` → `const X`
   out = out.replace(/\bexport\s+(?=(?:const|let|var|function|class|async)\b)/g, '');
@@ -94,6 +105,13 @@ const transformReactCode = (code: string): string => {
   // export default yoksa ve kod doğrudan JSX ile başlıyorsa → bir bileşene sar
   if (!hasDefault && /^\s*</.test(out)) {
     out = `var __LoominaDefault = () => (\n<>\n${out}\n</>\n);`;
+  }
+
+  // Babel klasik JSX runtime'ı `React.createElement` üretir → React kapsamda olmalı.
+  // Modern kod yalnızca hook'ları import edip `import React`'i atlayabilir; eksikse ekle
+  // (zaten varsa "Identifier 'React' has already been declared" hatasını önlemek için ekleme).
+  if (!/\bimport\s+React\b/.test(out)) {
+    out = `import React from 'https://esm.sh/react@18';\n${out}`;
   }
 
   return out;
@@ -127,7 +145,12 @@ const buildReactPreviewDocument = (code: string): string => {
       var msg = (err && (err.stack || err.message)) || String(err);
       el.textContent = 'Önizleme hatası:\\n' + msg;
     };
-    window.addEventListener('error', function (e) { window.__loominaShowError(e.error || e.message); });
+    window.addEventListener('error', function (e) {
+      // Cross-origin (esm.sh) betiklerinden gelen opak "Script error." mesajı bilgi taşımaz ve
+      // çoğu zaman zararsızdır; gerçek render hatalarını React Error Boundary zaten yakalar.
+      if ((e.message === 'Script error.' || e.message === 'Script error') && !e.error) return;
+      window.__loominaShowError(e.error || e.message);
+    });
     window.addEventListener('unhandledrejection', function (e) { window.__loominaShowError(e.reason); });
   </script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -145,7 +168,16 @@ import { createRoot as __createRoot } from 'https://esm.sh/react-dom@18/client';
     if (typeof __LoominaDefault === 'undefined') {
       throw new Error('Render edilecek bir bileşen bulunamadı (kod "export default" içermiyor).');
     }
-    __createRoot(document.getElementById('root')).render(__React.createElement(__LoominaDefault));
+    // Error Boundary: render sırasındaki hatayı GERÇEK mesajıyla yakalar (opak "Script error." yerine).
+    class __ErrorBoundary extends __React.Component {
+      constructor(props) { super(props); this.state = { err: null }; }
+      static getDerivedStateFromError(err) { return { err: err }; }
+      componentDidCatch(err) { window.__loominaShowError && window.__loominaShowError(err); }
+      render() { return this.state.err ? null : this.props.children; }
+    }
+    __createRoot(document.getElementById('root')).render(
+      __React.createElement(__ErrorBoundary, null, __React.createElement(__LoominaDefault))
+    );
   } catch (err) {
     window.__loominaShowError && window.__loominaShowError(err);
   }

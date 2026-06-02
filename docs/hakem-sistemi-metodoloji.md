@@ -225,6 +225,12 @@ Medyan, üç puanı sıralayıp ortadakini seçer. Bu, aykırı (outlier) bir J3
 | 40 | 80 | 10 | 10, **40**, 80 | 40 | J3 aykırı → yutulur |
 | 40 | 80 | 90 | 40, **80**, 90 | 80 | J3 aykırı → yutulur |
 
+> **Yorum (UI/rapor okuması):** Tahkimci genelde iki uç görüşün **arasına** oturduğundan, çoğu
+> uyuşmazlık vakasında medyan tam olarak J3'e eşit çıkar (tablonun 1. satırı). Bu, "final skor doğrudan
+> J3'tür" anlamına **gelmez** — final her zaman medyandır; J3 yalnızca ortada kaldığı için kazanır. J3
+> aykırı olduğunda (2. ve 3. satır) final J1 veya J2'ye döner ve J3 dışlanır. UI ve `.md` raporunda bu
+> metrikler `(medyan)` etiketiyle işaretlenir.
+
 ### 6.4 Tasarım gerekçesi
 
 Önceki tasarımda, herhangi bir uyuşmazlıkta J3 **tüm 5 metriği tek başına** yeniden yazıyordu; bu
@@ -310,6 +316,31 @@ kullanılır (kısıtlar her iki yerde aynı).
 - **Hakem/tahkimci çıktısı:** yalnızca JSON; etrafında metin veya markdown yok.
 - Dayanıklılık için ayrıştırıcı, metin içindeki ilk `{` ile son `}` arasını alır (etraftaki gürültüyü
   temizler) — bkz. §9.
+
+### 8.3 Üretilen kodun ayıklanması (değerlendirme öncesi normalizasyon)
+
+Üretici modeller, kodu çoğunlukla bir markdown kod bloğu (```` ```jsx … ``` ````) içinde, kimi zaman
+öncesinde/sonrasında açıklama metniyle döndürür. Hakemlere **yalnızca kod** verilmesi gerektiğinden,
+üretim uç noktası (`src/app/api/generate/route.ts`) çıktıyı `extractCodeFromMarkdown`
+(`src/lib/parser.ts`) ile ayıklar. Ayıklanan bu metin hem önizlemede hem de **hakem değerlendirmesinde**
+kullanılır — yani ayıklama hatası doğrudan skoru etkiler.
+
+Ayıklama kuralı (öncelik sırasıyla):
+
+1. Metinde **en az iki fence** varsa: **ilk açılış fence'inden son kapanış fence'ine** kadar olan içerik
+   alınır (ilk satırdaki dil etiketi — `jsx`, `html` — atlanır).
+2. Aksi halde klasik tek-blok regex'i denenir.
+3. Fence yoksa, `<html>`/`<div>` gibi bir etiketle başlayan büyük yığın alınır.
+4. Hiçbiri yoksa metnin kendisi döndürülür (model düz metin / özür yazmış olabilir).
+
+> **Neden "son kapanış fence'i"?** Özellikle AI sohbet / IDE arayüzü üreten promptlarda model, ürettiği
+> kodun **içine** bir mesaj string'i olarak başka bir markdown kod bloğu gömebilir
+> (örn. `content: "Here's the code:\n```jsx\n…\n```"`). Non-greedy (ilk kapanışta duran) ayıklama bu iç
+> fence'de erken kesip kodun büyük kısmını atar; bu da o modelin çıktısının "yarıda kesilmiş / çok kısa"
+> görünmesine ve **haksız yere düşük puan almasına** yol açar. İlk-açılıştan-son-kapanışa kuralı iç
+> fence'leri kodun parçası sayarak bu yanlılığı giderir. (Makalede ölçüm geçerliliği açısından
+> belirtilmesi önerilir: gözlemlenen "az kod üreten model" vakalarının bir kısmı gerçek model davranışı
+> değil, ayıklama artefaktıydı ve düzeltilmiştir.)
 
 ---
 
@@ -400,6 +431,8 @@ konsensüs eşiğinin (20) gözden geçirilmesi gerektiğine işaret eder.
 |-------|------------|
 | `src/lib/llmConfig.ts` | Tüm inference parametreleri |
 | `src/lib/prompts.ts` | `SYSTEM_CONSTRAINTS` (üretici + checker ortak) |
+| `src/lib/parser.ts` | `extractCodeFromMarkdown` — üretilen kodun değerlendirme öncesi ayıklanması (§8.3) |
+| `src/app/api/generate/route.ts` | Üretim uç noktası; çıktıyı ayıklar (§8.3) |
 | `src/lib/evaluation/promptAlignmentChecker.ts` | Programatik prompt-uyum (Kategori A) |
 | `src/lib/evaluation/rubrics/*.md` + `rubrics.ts` | 5 metrik rubriği + yükleyici |
 | `src/lib/evaluation/judgeService.ts` | Metrik başına hakem çağrısı + harmanlama + retry |
