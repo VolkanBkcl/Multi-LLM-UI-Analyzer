@@ -1,0 +1,181 @@
+model,loc,seconds,theme,difficulty,test
+DeepSeek V4 Pro,74,65.368,1,1,1
+Qwen3.6 Plus,85,41.24,1,1,1
+Gemini 3.5 Flash,71,15.61,1,1,1
+DeepSeek V4 Pro,74,65.368,1,1,2
+Qwen3.6 Plus,85,41.24,1,1,2
+Gemini 3.5 Flash,71,15.61,1,1,2
+DeepSeek V4 Pro,74,65.368,1,1,3
+Qwen3.6 Plus,85,41.24,1,1,3
+Gemini 3.5 Flash,71,15.61,1,1,3
+DeepSeek V4 Pro,74,65.368,1,1,4
+Qwen3.6 Plus,85,41.24,1,1,4
+Gemini 3.5 Flash,71,15.61,1,1,4
+DeepSeek V4 Pro,74,65.368,1,1,5
+Qwen3.6 Plus,85,41.24,1,1,5
+Gemini 3.5 Flash,71,15.61,1,1,5
+DeepSeek V4 Pro,191,215.7689,1,2,1
+Qwen3.6 Plus,672,154.32206,1,2,1
+Gemini 3.5 Flash,554,33.013690000000004,1,2,1
+DeepSeek V4 Pro,191,215.769,1,2,2
+Qwen3.6 Plus,672,154.322,1,2,2
+Gemini 3.5 Flash,554,33.014,1,2,2
+DeepSeek V4 Pro,191,215.769,1,2,3
+Qwen3.6 Plus,672,154.322,1,2,3
+Gemini 3.5 Flash,554,33.014,1,2,3
+DeepSeek V4 Pro,191,215.769,1,2,4
+Qwen3.6 Plus,672,154.322,1,2,4
+Gemini 3.5 Flash,554,33.014,1,2,4
+DeepSeek V4 Pro,191,215.769,1,2,5
+Qwen3.6 Plus,672,154.322,1,2,5
+Gemini 3.5 Flash,554,33.014,1,2,5
+DeepSeek V4 Pro,283,72.04102999999999,1,3,1
+Qwen3.6 Plus,418,100.9667,1,3,1
+Gemini 3.5 Flash,483,37.739470000000004,1,3,1
+DeepSeek V4 Pro,283,72.041,1,3,2
+Qwen3.6 Plus,418,100.967,1,3,2
+Gemini 3.5 Flash,483,37.739,1,3,2
+DeepSeek V4 Pro,283,72.041,1,3,3
+Qwen3.6 Plus,418,100.967,1,3,3
+Gemini 3.5 Flash,483,37.739,1,3,3
+DeepSeek V4 Pro,283,72.041,1,3,4
+Qwen3.6 Plus,418,100.967,1,3,4
+Gemini 3.5 Flash,483,37.739,1,3,4
+DeepSeek V4 Pro,283,72.041,1,3,5
+Qwen3.6 Plus,418,100.967,1,3,5
+Gemini 3.5 Flash,483,37.739,1,3,5
+DeepSeek V4 Pro,237,66.73446000000001,2,1,1
+Qwen3.6 Plus,32,46.78277,2,1,1
+Gemini 3.5 Flash,36,12.680069999999999,2,1,1
+DeepSeek V4 Pro,237,66.734,2,1,2
+Qwen3.6 Plus,32,46.783,2,1,2
+Gemini 3.5 Flash,36,12.68,2,1,2
+DeepSeek V4 Pro,237,66.734,2,1,3
+Qwen3.6 Plus,32,46.783,2,1,3
+Gemini 3.5 Flash,36,12.68,2,1,3
+DeepSeek V4 Pro,237,66.734,2,1,4
+Qwen3.6 Plus,32,46.783,2,1,4
+Gemini 3.5 Flash,36,12.68,2,1,4
+DeepSeek V4 Pro,237,66.734,2,1,5
+Qwen3.6 Plus,32,46.783,2,1,5
+Gemini 3.5 Flash,36,12.68,2,1,5
+DeepSeek V4 Pro,444,198.166,2,2,1
+Qwen3.6 Plus,177,135.389,2,2,1
+Gemini 3.5 Flash,377,34.617,2,2,1
+DeepSeek V4 Pro,444,198.166,2,2,2
+Qwen3.6 Plus,177,135.389,2,2,2
+Gemini 3.5 Flash,377,34.617,2,2,2
+DeepSeek V4 Pro,444,198.166,2,2,3
+Qwen3.6 Plus,177,135.389,2,2,3
+Gemini 3.5 Flash,377,34.617,2,2,3
+DeepSeek V4 Pro,444,198.166,2,2,4
+Qwen3.6 Plus,177,135.389,2,2,4
+Gemini 3.5 Flash,377,34.617,2,2,4
+DeepSeek V4 Pro,444,198.166,2,2,5
+Qwen3.6 Plus,177,135.389,2,2,5
+Gemini 3.5 Flash,377,34.617,2,2,5
+DeepSeek V4 Pro,319,100.89767,2,3,1
+Qwen3.6 Plus,518,133.54637,2,3,1
+Gemini 3.5 Flash,695,53.251349999999995,2,3,1
+DeepSeek V4 Pro,319,100.898,2,3,2
+Qwen3.6 Plus,518,133.546,2,3,2
+Gemini 3.5 Flash,695,53.251,2,3,2
+DeepSeek V4 Pro,319,100.898,2,3,3
+Qwen3.6 Plus,518,133.546,2,3,3
+Gemini 3.5 Flash,695,53.251,2,3,3
+DeepSeek V4 Pro,319,100.898,2,3,4
+Qwen3.6 Plus,518,133.546,2,3,4
+Gemini 3.5 Flash,695,53.251,2,3,4
+DeepSeek V4 Pro,319,100.898,2,3,5
+Qwen3.6 Plus,518,133.546,2,3,5
+Gemini 3.5 Flash,695,53.251,2,3,5
+DeepSeek V4 Pro,118,32.189189999999996,3,1,1
+Qwen3.6 Plus,45,65.84507,3,1,1
+Gemini 3.5 Flash,146,14.90889,3,1,1
+DeepSeek V4 Pro,118,32.189,3,1,2
+Qwen3.6 Plus,45,65.845,3,1,2
+Gemini 3.5 Flash,146,14.909,3,1,2
+DeepSeek V4 Pro,118,32.189,3,1,3
+Qwen3.6 Plus,45,65.845,3,1,3
+Gemini 3.5 Flash,146,14.909,3,1,3
+DeepSeek V4 Pro,118,32.189,3,1,4
+Qwen3.6 Plus,45,65.845,3,1,4
+Gemini 3.5 Flash,146,14.909,3,1,4
+DeepSeek V4 Pro,118,32.189,3,1,5
+Qwen3.6 Plus,45,65.845,3,1,5
+Gemini 3.5 Flash,146,14.909,3,1,5
+DeepSeek V4 Pro,300,114.8495,3,2,1
+Qwen3.6 Plus,122,190.02854000000002,3,2,1
+Gemini 3.5 Flash,423,23.98807,3,2,1
+DeepSeek V4 Pro,300,114.85,3,2,2
+Qwen3.6 Plus,122,190.029,3,2,2
+Gemini 3.5 Flash,423,23.988,3,2,2
+DeepSeek V4 Pro,300,114.85,3,2,3
+Qwen3.6 Plus,122,190.029,3,2,3
+Gemini 3.5 Flash,423,23.988,3,2,3
+DeepSeek V4 Pro,300,114.85,3,2,4
+Qwen3.6 Plus,122,190.029,3,2,4
+Gemini 3.5 Flash,423,23.988,3,2,4
+DeepSeek V4 Pro,300,114.85,3,2,5
+Qwen3.6 Plus,122,190.029,3,2,5
+Gemini 3.5 Flash,423,23.988,3,2,5
+DeepSeek V4 Pro,267,78.68575999999999,3,3,1
+Qwen3.6 Plus,345,134.04046,3,3,1
+Gemini 3.5 Flash,535,45.2055,3,3,1
+DeepSeek V4 Pro,267,78.686,3,3,2
+Qwen3.6 Plus,345,134.04,3,3,2
+Gemini 3.5 Flash,535,45.206,3,3,2
+DeepSeek V4 Pro,267,78.686,3,3,3
+Qwen3.6 Plus,345,134.04,3,3,3
+Gemini 3.5 Flash,535,45.206,3,3,3
+DeepSeek V4 Pro,267,78.686,3,3,4
+Qwen3.6 Plus,345,134.04,3,3,4
+Gemini 3.5 Flash,535,45.206,3,3,4
+DeepSeek V4 Pro,267,78.686,3,3,5
+Qwen3.6 Plus,345,134.04,3,3,5
+Gemini 3.5 Flash,535,45.206,3,3,5
+DeepSeek V4 Pro,53,55.03,4,1,1
+Qwen3.6 Plus,61,113.456,4,1,1
+Gemini 3.5 Flash,126,16.132,4,1,1
+DeepSeek V4 Pro,53,55.03,4,1,2
+Qwen3.6 Plus,61,113.456,4,1,2
+Gemini 3.5 Flash,126,16.132,4,1,2
+DeepSeek V4 Pro,53,55.03,4,1,3
+Qwen3.6 Plus,61,113.456,4,1,3
+Gemini 3.5 Flash,126,16.132,4,1,3
+DeepSeek V4 Pro,53,55.03,4,1,4
+Qwen3.6 Plus,61,113.456,4,1,4
+Gemini 3.5 Flash,126,16.132,4,1,4
+DeepSeek V4 Pro,53,55.03,4,1,5
+Qwen3.6 Plus,61,113.456,4,1,5
+Gemini 3.5 Flash,126,16.132,4,1,5
+DeepSeek V4 Pro,918,224.07741000000001,4,2,1
+Qwen3.6 Plus,535,102.79427,4,2,1
+Gemini 3.5 Flash,405,25.26349,4,2,1
+DeepSeek V4 Pro,918,224.077,4,2,2
+Qwen3.6 Plus,535,102.794,4,2,2
+Gemini 3.5 Flash,405,25.263,4,2,2
+DeepSeek V4 Pro,918,224.077,4,2,3
+Qwen3.6 Plus,535,102.794,4,2,3
+Gemini 3.5 Flash,405,25.263,4,2,3
+DeepSeek V4 Pro,918,224.077,4,2,4
+Qwen3.6 Plus,535,102.794,4,2,4
+Gemini 3.5 Flash,405,25.263,4,2,4
+DeepSeek V4 Pro,918,224.077,4,2,5
+Qwen3.6 Plus,535,102.794,4,2,5
+Gemini 3.5 Flash,405,25.263,4,2,5
+DeepSeek V4 Pro,403,511.05024,4,3,1
+Qwen3.6 Plus,594,167.33717000000001,4,3,1
+Gemini 3.5 Flash,738,81.45019,4,3,1
+DeepSeek V4 Pro,403,511.05,4,3,2
+Qwen3.6 Plus,594,167.337,4,3,2
+Gemini 3.5 Flash,738,81.45,4,3,2
+DeepSeek V4 Pro,403,511.05,4,3,3
+Qwen3.6 Plus,594,167.337,4,3,3
+Gemini 3.5 Flash,738,81.45,4,3,3
+DeepSeek V4 Pro,403,511.05,4,3,4
+Qwen3.6 Plus,594,167.337,4,3,4
+Gemini 3.5 Flash,738,81.45,4,3,4
+DeepSeek V4 Pro,403,511.05,4,3,5
+Qwen3.6 Plus,594,167.337,4,3,5
+Gemini 3.5 Flash,738,81.45,4,3,5
