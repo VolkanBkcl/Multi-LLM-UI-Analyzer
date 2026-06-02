@@ -63,6 +63,15 @@ export interface ArbitrationResult {
   scores: Record<MetricKey, number>;
 }
 
+/** Bir metriğin J1/J2/J3 kırılımı ve nasıl çözüldüğü (UI + .md raporu için). */
+export interface MetricBreakdownItem {
+  j1: number;
+  j2: number;
+  j3: number | null; // yalnızca bu metrik uyuşmazlık nedeniyle J3'e gittiyse dolu
+  final: number;
+  method: 'consensus_average' | 'median_tiebreaker';
+}
+
 /** Orchestrator'ın nihai çıktısı. */
 export interface EvaluationResult {
   // Mevcut AnalysisResult ile uyumlu alanlar (0-100):
@@ -85,4 +94,5 @@ export interface EvaluationResult {
   j2Raw: JudgeResult;
   arbitration: ArbitrationResult | null;
   promptAlignmentDetail: PromptAlignmentDetail;
+  metricBreakdown: Record<MetricKey, MetricBreakdownItem>;
 }

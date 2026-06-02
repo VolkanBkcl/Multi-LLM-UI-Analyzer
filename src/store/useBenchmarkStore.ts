@@ -40,6 +40,8 @@ export type AnalysisResult = {
   overallScore?: number;
   decisionMethod?: DecisionMethod;
   disagreedMetrics?: string[];
+  j1Model?: string;
+  j2Model?: string;
   j3Model?: string | null;
   promptAlignmentDetail?: {
     programmaticScore: number;
@@ -48,6 +50,17 @@ export type AnalysisResult = {
     totalRules: number;
     passedRules: number;
   };
+  // Metrik bazlı J1/J2/J3 kırılımı (UI breakdown + .md raporu için):
+  metricBreakdown?: Record<
+    string,
+    {
+      j1: number;
+      j2: number;
+      j3: number | null;
+      final: number;
+      method: 'consensus_average' | 'median_tiebreaker';
+    }
+  >;
 };
 
 export type ModelResult = {

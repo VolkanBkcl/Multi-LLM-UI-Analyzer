@@ -10,9 +10,10 @@ import {
   ThumbsUp, Minus, RefreshCw, Copy,
   Maximize2, MessageSquarePlus, Search, Globe, Code, Image,
   ChevronDown, ChevronRight, X, Eye,
-  PieChart, ExternalLink, Plus, LogOut, UserCircle2, Users, History
+  PieChart, ExternalLink, Plus, LogOut, UserCircle2, Users, History, Download, FileDown
 } from "lucide-react";
 import { openCodeInNewTab } from "@/utils/preview";
+import { downloadAnalysisMarkdown, downloadCombinedAnalysisMarkdown, type AnalysisExportEntry } from "@/utils/exportAnalysis";
 import AuthModal from "@/components/AuthModal";
 
 // ─── Types ──────────────────────────────────────────────────
@@ -78,6 +79,15 @@ const MODEL_COLORS: Record<ModelProvider, string> = {
   'qwen/qwen3.6-plus': "#9333ea",
   'nvidia/nemotron-3-super-120b-a12b:free': "#76b900",
   'cohere/command-r-plus-08-2024': "#39594d",
+};
+
+// Metrik anahtarı → Türkçe etiket (J3 tahkim dökümü için)
+const METRIC_TR: Record<string, string> = {
+  readability: "Okunabilirlik",
+  performance: "Performans",
+  security: "Güvenlik",
+  maintainability: "Sürdürülebilirlik",
+  promptAdherence: "Prompt Uyumu",
 };
 
 const MODEL_BADGE_CLS: Record<ModelProvider, string> = {
@@ -443,7 +453,23 @@ function ModelCard({ model, result, animDelay }: { model: ModelProvider; result:
              {result!.analysisResult && (
                <div className="mt-4 space-y-3 animate-fade-in border-t border-[--border-soft] pt-3">
                   <div className="flex flex-col gap-1.5 mb-2">
-                    <h4 className="text-xs font-bold text-zinc-300">AI Kod İnceleme Sonucu</h4>
+                    <div className="flex items-center justify-between gap-2">
+                      <h4 className="text-xs font-bold text-zinc-300">AI Kod İnceleme Sonucu</h4>
+                      <button
+                        onClick={() => downloadAnalysisMarkdown({
+                          modelId: model,
+                          displayName: MODEL_DISPLAY[model],
+                          prompt,
+                          code: result!.content,
+                          timeTakenMs: result!.timeTakenMs,
+                          analysis: result!.analysisResult!,
+                        })}
+                        className="flex items-center gap-1 px-2 py-1 text-[10px] font-semibold rounded-md border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 transition-all"
+                        title="Bu modelin analiz raporunu Markdown olarak indir"
+                      >
+                        <Download className="w-3 h-3" />Markdown İndir
+                      </button>
+                    </div>
                     {result!.analysisResult.judgeModels && result!.analysisResult.judgeModels.length > 0 && (
                       <div className="flex flex-wrap gap-1">
                         {result!.analysisResult.judgeModels.map((m) => (
@@ -463,6 +489,33 @@ function ModelCard({ model, result, animDelay }: { model: ModelProvider; result:
                       </div>
                     )}
                   </div>
+
+                  {/* J3 tahkim dökümü — hangi metrik için çağrıldı + J1/J2/J3 → Final */}
+                  {result!.analysisResult.decisionMethod === 'arbitration_j3' && (result!.analysisResult.disagreedMetrics?.length ?? 0) > 0 && (
+                    <div className="mb-2 p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                      <div className="flex items-center gap-1.5 text-[10px] font-bold text-amber-400 mb-1.5">
+                        <span>⚖</span>
+                        <span>J3 tahkimci şu metrik(ler) için çağrıldı:</span>
+                      </div>
+                      <ul className="space-y-1">
+                        {result!.analysisResult.disagreedMetrics!.map((m) => {
+                          const b = result!.analysisResult!.metricBreakdown?.[m];
+                          return (
+                            <li key={m} className="text-[10px] text-zinc-300 flex flex-wrap items-center gap-1.5">
+                              <span className="font-semibold text-amber-300">{METRIC_TR[m] ?? m}</span>
+                              {b && (
+                                <span className="font-mono text-zinc-400">
+                                  J1 {b.j1} · J2 {b.j2} · J3 {b.j3} → <span className="text-zinc-200 font-bold">{b.final}</span>
+                                  <span className="text-zinc-600"> (medyan)</span>
+                                </span>
+                              )}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
+                  )}
+
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                      <CategoryScore title="Okunabilirlik" score={result!.analysisResult.readability} suggestions={result!.analysisResult.suggestions?.readability} />
                      <CategoryScore title="Performans" score={result!.analysisResult.performance} suggestions={result!.analysisResult.suggestions?.performance} />
@@ -883,6 +936,31 @@ export default function Dashboard() {
             {showCards && lastPrompt && (
               <div className="flex justify-end mb-6 animate-fade-up">
                 <div className="max-w-lg px-4 py-2.5 rounded-2xl rounded-br-md bg-[--surface-2] text-sm text-zinc-200">{lastPrompt}</div>
+              </div>
+            )}
+
+            {/* Toplu Markdown indirme — en az bir modelde analiz sonucu varsa görünür */}
+            {showCards && selectedModels.some(m => results[m]?.analysisResult) && (
+              <div className="flex justify-end mb-3">
+                <button
+                  onClick={() => {
+                    const entries: AnalysisExportEntry[] = selectedModels
+                      .filter(m => results[m]?.analysisResult)
+                      .map(m => ({
+                        modelId: m,
+                        displayName: MODEL_DISPLAY[m],
+                        prompt: lastPrompt,
+                        code: results[m]!.content,
+                        timeTakenMs: results[m]!.timeTakenMs,
+                        analysis: results[m]!.analysisResult!,
+                      }));
+                    downloadCombinedAnalysisMarkdown(lastPrompt, entries);
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold rounded-md border border-[--accent]/30 text-[--accent] hover:bg-[--accent]/10 transition-all"
+                  title="Tüm karşılaştırılan modellerin analizlerini tek Markdown dosyasında indir"
+                >
+                  <FileDown className="w-3.5 h-3.5" />Tüm Analizleri İndir (.md)
+                </button>
               </div>
             )}
 

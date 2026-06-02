@@ -87,16 +87,49 @@ async function callOpenRouterJson(
     }
 
     const data = await response.json();
-    const resultText: string = data.choices?.[0]?.message?.content || '';
+    const choice = data.choices?.[0];
+    const resultText: string = choice?.message?.content || '';
+    const finishReason: string | undefined = choice?.finish_reason;
+
+    // Boş içerik (genelde max_tokens reasoning'e harcanıp content'e kalmadığında) → retry.
     if (!resultText) {
-      throw new Error(`${model} — LLM yanıtı boş döndü.`);
+      lastError = new Error(
+        `${model} — LLM yanıtı boş döndü (finish_reason: ${finishReason ?? 'bilinmiyor'}).`,
+      );
+      if (attempt >= RETRY_DELAYS_MS.length) break;
+      await sleep(RETRY_DELAYS_MS[attempt]);
+      continue;
     }
 
-    const cleaned = resultText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-    return JSON.parse(cleaned);
+    // Truncation veya etrafında metin olsa bile JSON'u dayanıklı şekilde ayıkla.
+    try {
+      return parseLooseJson(resultText);
+    } catch (err: any) {
+      lastError = new Error(
+        `${model} — JSON ayrıştırma hatası (finish_reason: ${finishReason ?? 'bilinmiyor'}): ${err?.message ?? err}`,
+      );
+      if (attempt >= RETRY_DELAYS_MS.length) break;
+      await sleep(RETRY_DELAYS_MS[attempt]);
+      continue;
+    }
   }
 
   throw lastError ?? new Error(`${model} — bilinmeyen hata.`);
+}
+
+/**
+ * LLM çıktısından JSON'u dayanıklı şekilde ayıklar:
+ * markdown fence'lerini siler, ilk '{' ile son '}' arasını alır (etraftaki metni atar).
+ * Truncation durumunda JSON.parse yine de hata fırlatır → retry tetiklenir.
+ */
+function parseLooseJson(text: string): any {
+  let t = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+  const start = t.indexOf('{');
+  const end = t.lastIndexOf('}');
+  if (start !== -1 && end !== -1 && end > start) {
+    t = t.slice(start, end + 1);
+  }
+  return JSON.parse(t);
 }
 
 function clampScore(value: unknown): number {
@@ -131,6 +164,8 @@ Think step by step:
 4. Assign a score (0-100) based only on the evidence above
 
 Also provide 1-2 short, actionable improvement suggestions in Turkish for this criterion.
+
+IMPORTANT: Keep the "reasoning" field concise (2-4 sentences max). Do NOT write long analysis in the JSON.
 
 Return ONLY this JSON (no surrounding text, no markdown):
 {"criterion":"${metric}","reasoning":"...","suggestions":["...","..."],"score":<0-100 integer>}`;

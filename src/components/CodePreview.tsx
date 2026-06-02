@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { Code2, MonitorPlay } from 'lucide-react';
+import { buildPreviewDocument } from '@/utils/preview';
 
 interface CodePreviewProps {
   code: string | null;
@@ -19,38 +20,10 @@ export default function CodePreview({ code }: CodePreviewProps) {
     );
   }
 
-  // 1. SAF NATIVE IFRAME (0% EVAL, 100% CSP UYUMLU)
-  // Sandpack paketi tamamen dıslandı. Chrome DevTools hataları bitti.
-  // Gelen salt metin, Markdown parçalarından (```html gibi) temizleniyor.
-  const cleanCode = code
-    .replace(/```html\n?/gi, '')
-    .replace(/```javascript\n?/gi, '<script>\n')
-    .replace(/```css\n?/gi, '<style>\n')
-    .replace(/```/g, '\n</script></style>');
-
-  // Tailwind entegrasyonlu ve karanlık mod destekli saf şablon
-  const htmlContent = `
-    <!DOCTYPE html>
-    <html lang="en" class="dark">
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <script src="https://cdn.tailwindcss.com"></script>
-      <script>
-        tailwind.config = { darkMode: 'class' }
-      </script>
-      <style>
-        body { margin: 0; padding: 16px; font-family: system-ui, sans-serif; }
-        ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 4px; }
-      </style>
-    </head>
-    <body class="bg-white text-black dark:bg-zinc-950 dark:text-zinc-100 min-h-screen">
-      ${cleanCode}
-    </body>
-    </html>
-  `;
+  // SAF NATIVE IFRAME (0% EVAL, 100% CSP UYUMLU)
+  // Önizleme belgesi, "Çalıştır" yeni-sekme yoluyla aynı yardımcıdan üretilir (tek kaynak):
+  // tam HTML belgeleri olduğu gibi kullanılır, bileşen parçaları Tailwind CDN ile sarılır.
+  const htmlContent = buildPreviewDocument(code);
 
   return (
     <div className="flex flex-col h-full rounded-2xl overflow-hidden border border-zinc-800/80 bg-zinc-950 w-full group transition-all duration-300 shadow-2xl">

@@ -67,7 +67,7 @@ Tüm inference parametreleri `src/lib/llmConfig.ts` dosyasında merkezi olarak t
 |---|---|---|---|
 | `temperature` | 0.7 | 0.1 | 0.1 |
 | `top_p` | 0.95 | 0.95 | 0.95 |
-| `max_tokens` | 4096 | 2048 | 3000 |
+| `max_tokens` | 8192 | 8000 | 8000 |
 | `stream` | false | — | — |
 | `response_format` | — | `json_object`* | `json_object` |
 | `seed` | — | — | — |
@@ -76,10 +76,12 @@ Tüm inference parametreleri `src/lib/llmConfig.ts` dosyasında merkezi olarak t
 
 **Makale açıklama metni (hazır):**
 > Generation parameters were held constant across all generator models: temperature = 0.7,
-> top_p = 0.95, max_tokens = 4096. For evaluation calls (J1/J2/J3), temperature was set
-> to 0.1 to approximate deterministic scoring; top_p = 0.95, max_tokens = 2048 (judges)
-> and 3000 (arbitrator). The `seed` parameter was omitted as it is not uniformly supported
-> across all OpenRouter-hosted models. All inference parameters are defined in
+> top_p = 0.95, max_tokens = 8192. For evaluation calls (J1/J2/J3), temperature was set
+> to 0.1 to approximate deterministic scoring; top_p = 0.95, max_tokens = 8000. A high
+> token budget is required for the evaluation/arbitration calls because the judge models are
+> reasoning models that consume part of the budget on internal reasoning; an insufficient
+> budget truncates the JSON output. The `seed` parameter was omitted as it is not uniformly
+> supported across all OpenRouter-hosted models. All inference parameters are defined in
 > `src/lib/llmConfig.ts` for reproducibility.
 
 **System prompt (kod üretimi):**
@@ -105,13 +107,28 @@ Hakem çağrılarındaki çıktı kısıtı (`judgeService.ts`):
 > **Not:** Önceki sistemde Grok ortalamaya dahil bir hakemdi; yeni sistemde yalnızca **tahkimci**.
 > minimax-m3 yeni eklendi.
 
-### 2.2 Konsensüs / tahkim kuralı
-- Her metrik için `|J1_score − J2_score| ≤ 20` → **konsensüs** → iki puanın ortalaması.
-- Herhangi bir metrikte fark `> 20` → **uyuşmazlık** → J3 **tüm 5 metriği** yeniden puanlar
-  (kısmi tahkim yapılmaz; tutarsızlığı önlemek için).
+### 2.2 Konsensüs / tahkim kuralı (Seçici + Medyan Tie-Breaker)
+Her metrik için `|J1_score − J2_score|` farkı kontrol edilir (eşik = 20):
+
+- **Hemfikir metrik** (`fark ≤ 20`) → her zaman **J1-J2 ortalaması** kullanılır. Bu metrik,
+  başka bir metrikte uyuşmazlık olsa bile J3 tarafından **ezilmez** (konsensüs korunur).
+- **Uyuşmazlık metriği** (`fark > 20`) → J3 (tahkimci) o metriği yeniden puanlar ve final skor
+  **medyan(J1, J2, J3)** olur. J3 bir "kâhin" değil, **tie-breaker**'dır; aykırı (outlier) bir
+  J3 puanı medyan tarafından dengelenir.
+
+> **Tasarım gerekçesi (akademik):** Önceki tasarımda uyuşmazlık halinde J3 *tüm 5 metriği* tek
+> başına yeniden yazıyordu; bu, hakemlerin hemfikir olduğu metriklerdeki konsensüsü çöpe atıyor
+> ve tek bir yargıcı aşırı yetkilendiriyordu. Yeni tasarım, LLM-as-judge literatüründeki **medyan/
+> çoğunluk oylaması** yaklaşımıyla uyumludur: tek aykırı yargıca dayanıklıdır ve yalnızca gerçek
+> anlaşmazlık olan boyutta müdahale eder.
+
 - Eşik sabiti tek noktadan ayarlanır: `DISAGREEMENT_THRESHOLD` ([consensusService.ts](../src/lib/evaluation/consensusService.ts)).
   - **Kalibrasyon notu:** İlk testlerde her iki analiz de tahkime gittiği için eşik **15 → 20**
     yükseltildi. Tahkim oranı `decision_method` ile izlenmeli; sürekli yüksekse tekrar gözden geçir.
+- **J3 başarısız olursa:** uyuşmazlık metrikleri için medyan kurulamaz → J1-J2 ortalamasına düşülür
+  (`decision_method = arbitration_failed_fallback_average`).
+- **Öneriler:** J1 + J2 önerileri birleştirilir; bu kaynak artık skorlarla tutarlıdır (J1/J2 puanları
+  hem hemfikir hem uyuşmazlık metriklerinde final skora katkı verdiğinden).
 
 ### 2.3 5 metrik
 | Metrik (UI anahtarı) | Kaynak standart |
