@@ -378,10 +378,16 @@ konsensüs eşiğinin (20) gözden geçirilmesi gerektiğine işaret eder.
    (`src/utils/preview.ts` `buildPreviewDocument`):
    - **Tam HTML belgesi** → olduğu gibi.
    - **Statik HTML parçası** → Tailwind CDN enjekte edilerek sarılır (aksi halde utility class'lar ölü kalır).
-   - **React/JSX** → Babel Standalone + React/ReactDOM + lucide-react (esm.sh importmap) + Tailwind içeren
-     bir sandbox'ta gerçek bir React uygulaması olarak çalıştırılır.
+   - **React/JSX** → Babel Standalone + Tailwind içeren bir sandbox'ta gerçek bir React uygulaması olarak
+     çalıştırılır. Koddaki tüm bare import'lar (`react`, `recharts`, `chart.js`, `lucide-react`,
+     `@heroicons/react`, `clsx`, …) **esm.sh URL'lerine yeniden yazılır** (tek React kopyası → hook
+     hatası yok), böylece grafik/ikon kütüphanesi kullanan çıktılar da render olur. CSS/asset importları
+     (`import './x.css'`) atılır.
    Eksik/kesik (truncate olmuş) veya tanımsız import içeren çıktılar (örn. `import React` olmadan gelen
-   bir JSX fragment) sessiz bozuk render yerine **anlamlı bir hata** gösterir. Tüm bunlar yalnızca
+   bir JSX fragment) sessiz bozuk render yerine **anlamlı bir hata** gösterir.
+   **Bilinen küçük sınırlar:** `tailwindcss-animate` sınıfları (`animate-in`) Play CDN'de no-op olur
+   (düzen bozulmaz); saf TSX tip sözdizimi `react` preset'inde sorun çıkarabilir (örnek çıktılar düz JSX);
+   relative dosya importları (`./x`) tek-dosya önizlemede çözülmez. Tüm bunlar yalnızca
    görselleştirmedir; **otomatik metin-tabanlı hakem skorlarını etkilemez.** Makalede, modellerin çıktı
    biçimi eğiliminin (tam sayfa / bileşen / React) yalnızca görsel incelemeyi etkilediği, skorların ise
    bundan bağımsız olduğu belirtilmelidir.

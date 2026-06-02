@@ -2,9 +2,11 @@
  * Üretilen kodu tarayıcıda render edilebilir bir HTML belgesine dönüştürür.
  *
  * Üç tür çıktı desteklenir:
- *   1) Tam HTML belgesi (kendi <!DOCTYPE html> + Tailwind'ini taşır) → olduğu gibi kullanılır.
- *   2) React/JSX (component veya bare JSX) → Babel Standalone + React/ReactDOM + lucide-react
- *      (esm.sh importmap) + Tailwind enjekte edilerek gerçek bir React uygulaması olarak render edilir.
+ *   1) Tam HTML belgesi (kendi <!DOCTYPE html>'ini taşır) → olduğu gibi; Tailwind kullanıp CDN'i
+ *      unutmuşsa CDN enjekte edilir.
+ *   2) React/JSX (component veya bare JSX) → Babel Standalone + Tailwind ile gerçek bir React
+ *      uygulaması olarak render edilir. Bare import'lar (react, recharts, lucide-react, vb.) esm.sh
+ *      URL'lerine yeniden yazılarak HERHANGİ bir paket çözülebilir hale getirilir.
  *   3) Statik HTML parçası → Tailwind CDN içeren standart bir belgeye sarılır.
  *
  * Böylece HTML, JSX ve "sadece bileşen" döndüren modeller önizlemede adil ve doğru render edilir.
@@ -27,8 +29,51 @@ const isReactCode = (code: string): boolean =>
 const isFullHtmlDocument = (code: string): boolean =>
   /<!doctype html/i.test(code) || /<html[\s>]/i.test(code);
 
+/** Tailwind utility class deseni içeriyor mu? */
+const looksLikeTailwind = (code: string): boolean =>
+  /class(Name)?=["'][^"']*\b(flex|grid|p-|m-|bg-|text-|border|rounded|w-|h-|gap-|items-|justify-)/.test(
+    code,
+  );
+
+/** Belge zaten Tailwind runtime'ı içeriyor mu? */
+const hasTailwindRuntime = (code: string): boolean =>
+  /cdn\.tailwindcss\.com/.test(code) || /tailwind\.config/.test(code);
+
+/** Bir bare module specifier'ını esm.sh URL'sine çevirir (relative/absolute olanlara dokunmaz). */
+const esmUrl = (spec: string): string => {
+  if (/^(\.|\/|https?:)/.test(spec)) return spec; // relative/absolute → dokunma
+  if (spec === 'react') return 'https://esm.sh/react@18';
+  if (spec === 'react-dom') return 'https://esm.sh/react-dom@18';
+  if (spec.startsWith('react-dom/')) return `https://esm.sh/react-dom@18/${spec.slice('react-dom/'.length)}`;
+  if (spec.startsWith('react/')) return `https://esm.sh/react@18/${spec.slice('react/'.length)}`;
+  // Diğer tüm paketler tek React kopyasını paylaşsın (hook hatasını önler).
+  return `https://esm.sh/${spec}?deps=react@18,react-dom@18`;
+};
+
+/** Kullanıcı kodundaki import'ları esm.sh URL'lerine çevirir; CSS/asset importlarını siler. */
+const rewriteImports = (code: string): string => {
+  let out = code;
+  // 1) CSS/asset side-effect importlarını kaldır (tek-dosya önizlemede çözülemez)
+  out = out.replace(
+    /^[ \t]*import\s+['"][^'"]+\.(?:css|scss|sass|less|png|jpe?g|svg|gif|webp)['"];?[ \t]*\r?\n?/gim,
+    '',
+  );
+  // 2) `from '...'` (ve `export ... from '...'`) specifier'larını esm.sh'e çevir
+  out = out.replace(
+    /(\bfrom\s*)(['"])([^'"\n]+)(['"])/g,
+    (_m, pre: string, q: string, spec: string) => `${pre}${q}${esmUrl(spec)}${q}`,
+  );
+  // 3) side-effect `import '...'` (kalanlar) → esm.sh
+  out = out.replace(
+    /(\bimport\s+)(['"])([^'"\n]+)(['"])/g,
+    (_m, pre: string, q: string, spec: string) => `${pre}${q}${esmUrl(spec)}${q}`,
+  );
+  return out;
+};
+
 /**
  * React kodunu mount edilebilir hale getirir:
+ *  - import'lar esm.sh URL'lerine çevrilir (recharts/chart.js/lucide-react/… herhangi bir paket çözülür)
  *  - `export default X` → `var __LoominaDefault = X` (ESM'de default export'a dışarıdan erişilemez)
  *  - diğer named `export` anahtar sözcükleri kaldırılır (tüketilmiyor)
  *  - bare JSX fragment (kod `<` ile başlıyorsa) bir bileşene sarılır
@@ -36,6 +81,8 @@ const isFullHtmlDocument = (code: string): boolean =>
 const transformReactCode = (code: string): string => {
   // <script> kaçışı (kod string içinde </script> taşıyabilir)
   let out = code.replace(/<\/script>/gi, '<\\/script>');
+
+  out = rewriteImports(out);
 
   const hasDefault = /export\s+default\b/.test(out);
   if (hasDefault) {
@@ -52,7 +99,7 @@ const transformReactCode = (code: string): string => {
   return out;
 };
 
-/** React/JSX çıktıları için Babel + importmap + Tailwind içeren sandbox belgesi. */
+/** React/JSX çıktıları için Babel + Tailwind içeren sandbox belgesi (esm.sh ile modül çözümleme). */
 const buildReactPreviewDocument = (code: string): string => {
   const transformed = transformReactCode(code);
 
@@ -63,18 +110,6 @@ const buildReactPreviewDocument = (code: string): string => {
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Loomina Önizleme (React)</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script type="importmap">
-  {
-    "imports": {
-      "react": "https://esm.sh/react@18",
-      "react/jsx-runtime": "https://esm.sh/react@18/jsx-runtime",
-      "react-dom": "https://esm.sh/react-dom@18",
-      "react-dom/client": "https://esm.sh/react-dom@18/client",
-      "lucide-react": "https://esm.sh/lucide-react@0.460.0?deps=react@18",
-      "framer-motion": "https://esm.sh/framer-motion?deps=react@18"
-    }
-  }
-  </script>
   <style>
     body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
     #root { min-height: 100vh; }
@@ -103,8 +138,8 @@ const buildReactPreviewDocument = (code: string): string => {
   <script type="text/babel" data-type="module" data-presets="react">
 ${transformed}
 
-import __React from 'react';
-import { createRoot as __createRoot } from 'react-dom/client';
+import __React from 'https://esm.sh/react@18';
+import { createRoot as __createRoot } from 'https://esm.sh/react-dom@18/client';
 (function () {
   try {
     if (typeof __LoominaDefault === 'undefined') {
@@ -137,13 +172,25 @@ ${code}
 </body>
 </html>`;
 
+/** Tam HTML belgesine Tailwind CDN'ini uygun yere enjekte eder. */
+const injectTailwindIntoDoc = (doc: string): string => {
+  const tag = '<script src="https://cdn.tailwindcss.com"></script>';
+  if (/<\/head>/i.test(doc)) return doc.replace(/<\/head>/i, `  ${tag}\n</head>`);
+  if (/<head[^>]*>/i.test(doc)) return doc.replace(/(<head[^>]*>)/i, `$1\n  ${tag}`);
+  if (/<html[^>]*>/i.test(doc)) return doc.replace(/(<html[^>]*>)/i, `$1\n<head>${tag}</head>`);
+  return `${tag}\n${doc}`;
+};
+
 export const buildPreviewDocument = (rawCode: string): string => {
   const code = stripMarkdownFences(rawCode);
 
-  // 1) Zaten tam HTML belgesi → dokunma (kendi Tailwind'ini taşıyor olabilir)
-  if (isFullHtmlDocument(code)) return code;
+  // 1) Zaten tam HTML belgesi → Tailwind kullanıp CDN'i unutmuşsa enjekte et; aksi halde dokunma.
+  if (isFullHtmlDocument(code)) {
+    if (!hasTailwindRuntime(code) && looksLikeTailwind(code)) return injectTailwindIntoDoc(code);
+    return code;
+  }
 
-  // 2) React/JSX → Babel sandbox
+  // 2) React/JSX → Babel sandbox (esm.sh modül çözümleme)
   if (isReactCode(code)) return buildReactPreviewDocument(code);
 
   // 3) Statik HTML parçası → Tailwind enjeksiyonlu sarmalayıcı
