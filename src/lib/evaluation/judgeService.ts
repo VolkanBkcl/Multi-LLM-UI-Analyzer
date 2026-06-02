@@ -83,7 +83,11 @@ async function callOpenRouterJson(
     }
 
     if (!response.ok) {
-      throw new Error(`${model} — OpenRouter API Hatası: ${response.status} ${response.statusText}`);
+      // OpenRouter hata gövdesinde gerçek nedeni taşır (data policy, kredi, erişim vb.) — yüzeye çıkar.
+      const errBody = await response.json().catch(() => ({} as any));
+      const errMsg =
+        errBody?.error?.message || errBody?.message || JSON.stringify(errBody) || response.statusText;
+      throw new Error(`${model} — OpenRouter API Hatası (${response.status}): ${errMsg}`);
     }
 
     const data = await response.json();
