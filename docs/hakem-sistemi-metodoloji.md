@@ -277,7 +277,7 @@ Tüm parametreler `src/lib/llmConfig.ts` içinde merkezîdir.
 |---|---|---|---|
 | `temperature` | 0.7 | 0.1 | 0.1 |
 | `top_p` | 0.95 | 0.95 | 0.95 |
-| `max_tokens` | 8192 | 8000 | 8000 |
+| `max_tokens` | 16000 | 8000 | 8000 |
 | `response_format` | — | `json_object`* | `json_object` |
 | `stream` | false | — | — |
 | `seed` | — | — | — |
@@ -289,6 +289,8 @@ Tüm parametreler `src/lib/llmConfig.ts` içinde merkezîdir.
 - **Yüksek `max_tokens`:** hakem modeller reasoning (akıl yürüten) modellerdir; token bütçesinin bir
   kısmını iç akıl yürütmeye harcarlar. Düşük bütçe JSON çıktısını yarıda keser (truncation). Bu
   nedenle değerlendirme/tahkim çağrılarında yüksek `max_tokens` zorunludur.
+- **Kod üretimi `max_tokens=16000`:** Büyük React/dashboard çıktıları 8192 token'da kesilebildiğinden
+  (gözlemlenen truncation vakası) üretim bütçesi 16000'e çıkarılmıştır.
 - **`seed` yok:** OpenRouter tüm modellerde seed'i tutarlı desteklemediğinden eklenmemiştir;
   determinizm düşük temperature ile yaklaşıklanır.
 
@@ -371,14 +373,18 @@ konsensüs eşiğinin (20) gözden geçirilmesi gerektiğine işaret eder.
 5. **promptAdherence harman asimetrisi:** Tahkimde J3'ün promptAdherence skoru harmanlanmamıştır
    (§5.3 notu).
 6. **Önizleme (render) ≠ değerlendirme:** Hakemler kodun **metnini** puanlar, render edilmiş görüntüsünü
-   değil. Bir model "sadece bileşen" (boilerplate'siz, Tailwind CDN'siz bir `<div>`) döndürdüğünde, kod
-   geçerli ve kaliteli olsa bile **tek başına önizlemede stilsiz** görünebilir; başka bir model tam HTML
-   belgesi (kendi Tailwind CDN'iyle) döndürdüğünde düzgün görünür. Bu **görselleştirme artefaktı** skorları
-   etkilemez ancak insan gözüyle yapılan kalite kıyaslamasını yanıltabilir. Platform bu sorunu, önizlemeyi
-   normalize ederek (parça çıktılara Tailwind runtime'ı enjekte edip; tam belgeleri olduğu gibi bırakarak)
-   giderir — bkz. `src/utils/preview.ts` `buildPreviewDocument`. Makalede, modellerin "tam sayfa" vs
-   "yalnızca bileşen" döndürme eğiliminin görsel değerlendirmeyi etkilediği; otomatik (metin-tabanlı) hakem
-   skorlarının ise bu eğilimden bağımsız olduğu belirtilmelidir.
+   değil. Modeller çıktı *biçimini* farklı verir: tam HTML belgesi, yalnızca HTML bileşeni, ya da
+   React/JSX. Önizleme, bu farkın görsel kalite kıyaslamasını yanıltmaması için çıktıyı normalize eder
+   (`src/utils/preview.ts` `buildPreviewDocument`):
+   - **Tam HTML belgesi** → olduğu gibi.
+   - **Statik HTML parçası** → Tailwind CDN enjekte edilerek sarılır (aksi halde utility class'lar ölü kalır).
+   - **React/JSX** → Babel Standalone + React/ReactDOM + lucide-react (esm.sh importmap) + Tailwind içeren
+     bir sandbox'ta gerçek bir React uygulaması olarak çalıştırılır.
+   Eksik/kesik (truncate olmuş) veya tanımsız import içeren çıktılar (örn. `import React` olmadan gelen
+   bir JSX fragment) sessiz bozuk render yerine **anlamlı bir hata** gösterir. Tüm bunlar yalnızca
+   görselleştirmedir; **otomatik metin-tabanlı hakem skorlarını etkilemez.** Makalede, modellerin çıktı
+   biçimi eğiliminin (tam sayfa / bileşen / React) yalnızca görsel incelemeyi etkilediği, skorların ise
+   bundan bağımsız olduğu belirtilmelidir.
 
 ---
 

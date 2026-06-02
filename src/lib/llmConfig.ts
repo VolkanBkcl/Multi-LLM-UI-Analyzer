@@ -5,7 +5,7 @@
  * Makale "Deneysel Kurulum" bölümü bu dosyayı referans alır.
  *
  * Makale için raporlanabilir değerler:
- *   - Kod üretimi: temperature=0.7, top_p=0.95, max_tokens=8192
+ *   - Kod üretimi: temperature=0.7, top_p=0.95, max_tokens=16000
  *   - Değerlendirme (J1/J2): temperature=0.1, top_p=0.95, max_tokens=8000
  *   - Tahkimci (J3): temperature=0.1, top_p=0.95, max_tokens=8000
  *
@@ -18,11 +18,12 @@
  * Deterministik değerlendirme için düşük temperature (0.1) yeterli.
  */
 
-/** Kod üretimi parametreleri — yaratıcı fakat tutarlı çıktı. */
+/** Kod üretimi parametreleri — yaratıcı fakat tutarlı çıktı.
+ *  max_tokens yüksek tutulur: büyük React/dashboard dosyaları aksi halde kesilir (truncation). */
 export const GENERATION_PARAMS = {
   temperature: 0.7,
   top_p: 0.95,
-  max_tokens: 8192,
+  max_tokens: 16000,
 } as const;
 
 /** Hakem değerlendirmesi parametreleri — deterministik skor; reasoning için yüksek max_tokens. */
