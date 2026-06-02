@@ -1,5 +1,6 @@
 import { loadAllRubrics } from './rubrics';
 import { callOpenRouterJson, MODELS } from './judgeService';
+import { ARBITRATION_PARAMS } from '@/lib/llmConfig';
 import {
   METRIC_KEYS,
   type MetricKey,
@@ -85,7 +86,9 @@ Generated code: ${code}
 Reviewer 1 (${MODELS.J1}) results: ${JSON.stringify(j1)}
 Reviewer 2 (${MODELS.J2}) results: ${JSON.stringify(j2)}`;
 
-  const parsed = await callOpenRouterJson(MODELS.J3, systemPrompt, userMessage);
+  const parsed = await callOpenRouterJson(MODELS.J3, systemPrompt, userMessage, {
+    max_tokens: ARBITRATION_PARAMS.max_tokens,
+  });
 
   // Skorları normalize et (0-100 integer).
   const scores = {} as Record<MetricKey, number>;

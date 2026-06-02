@@ -1,5 +1,6 @@
 import { loadRubric } from './rubrics';
 import { METRIC_KEYS, type MetricKey, type SingleMetricResult, type JudgeResult } from './types';
+import { EVALUATION_PARAMS } from '@/lib/llmConfig';
 
 /**
  * Hakem (judge) model çağrıları. Halo etkisini önlemek için her metrik AYRI bir API
@@ -35,11 +36,13 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-/** Tek bir OpenRouter chat çağrısı; 429/5xx için kısa retry uygular ve JSON parse eder. */
+/** Tek bir OpenRouter chat çağrısı; 429/5xx için kısa retry uygular ve JSON parse eder.
+ *  overrideParams ile bireysel parametreler (ör. max_tokens) geçersiz kılınabilir. */
 async function callOpenRouterJson(
   model: string,
   systemPrompt: string,
   userPrompt: string,
+  overrideParams?: Record<string, number>,
 ): Promise<any> {
   let lastError: Error | null = null;
 
@@ -56,7 +59,8 @@ async function callOpenRouterJson(
         },
         body: JSON.stringify({
           model,
-          temperature: 0.1,
+          ...EVALUATION_PARAMS,
+          ...overrideParams,
           ...(SUPPORTS_JSON_FORMAT.has(model) ? { response_format: { type: 'json_object' } } : {}),
           messages: [
             { role: 'system', content: systemPrompt },

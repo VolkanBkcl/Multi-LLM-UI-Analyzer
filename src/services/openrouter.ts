@@ -1,4 +1,5 @@
 import { SYSTEM_CONSTRAINTS } from '@/lib/prompts';
+import { GENERATION_PARAMS } from '@/lib/llmConfig';
 
 const RETRY_DELAYS_MS = [10000, 30000, 60000];
 
@@ -39,6 +40,7 @@ export class OpenRouterService {
         },
         body: JSON.stringify({
           model: modelId,
+          ...GENERATION_PARAMS,
           stream: false,
           messages: [
             {

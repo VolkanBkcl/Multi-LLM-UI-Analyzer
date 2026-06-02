@@ -57,7 +57,45 @@ runEvaluation(code, prompt, SYSTEM_CONSTRAINTS)   [orchestrator]
 5) AnalysisResult (mevcut UI şekli) → ekran; ayrıca Supabase `evaluations` tablosuna kayıt
 ```
 
-### 2.1 Hakem dizilimi (model rolleri)
+### 2.1 Deneysel Kurulum — Generation Settings (Makale Tablosu)
+
+Tüm inference parametreleri `src/lib/llmConfig.ts` dosyasında merkezi olarak tanımlanmıştır.
+
+**Table 2: LLM Inference Parameters**
+
+| Parameter | Code Generation | Judge Evaluation (J1/J2) | Arbitrator (J3) |
+|---|---|---|---|
+| `temperature` | 0.7 | 0.1 | 0.1 |
+| `top_p` | 0.95 | 0.95 | 0.95 |
+| `max_tokens` | 4096 | 2048 | 3000 |
+| `stream` | false | — | — |
+| `response_format` | — | `json_object`* | `json_object` |
+| `seed` | — | — | — |
+
+\* Conditional on model support (`SUPPORTS_JSON_FORMAT` set in `judgeService.ts`).
+
+**Makale açıklama metni (hazır):**
+> Generation parameters were held constant across all generator models: temperature = 0.7,
+> top_p = 0.95, max_tokens = 4096. For evaluation calls (J1/J2/J3), temperature was set
+> to 0.1 to approximate deterministic scoring; top_p = 0.95, max_tokens = 2048 (judges)
+> and 3000 (arbitrator). The `seed` parameter was omitted as it is not uniformly supported
+> across all OpenRouter-hosted models. All inference parameters are defined in
+> `src/lib/llmConfig.ts` for reproducibility.
+
+**System prompt (kod üretimi):**
+Üretici modeller için `SYSTEM_CONSTRAINTS` (`src/lib/prompts.ts`):
+> "Sen uzman bir tam-yığın (full-stack) yazılım geliştiricisisin. [...] Ürettiğin her kod
+> üretime hazır (production-ready), okunabilir ve çalışır durumda olmalıdır. Asla eksik veya
+> yer tutucu (placeholder) kod verme."
+
+**Output constraint (değerlendirme):**
+Hakem çağrılarındaki çıktı kısıtı (`judgeService.ts`):
+> "Return ONLY this JSON (no surrounding text, no markdown):
+> `{"criterion":"...","reasoning":"...","suggestions":[...],"score":<0-100 integer>}`"
+
+---
+
+### 2.2 Hakem dizilimi (model rolleri)
 | Rol | OpenRouter Model ID | Açıklama |
 |-----|---------------------|----------|
 | J1 — Hakem 1 | `deepseek/deepseek-v4-pro` | Birinci bağımsız hakem |
