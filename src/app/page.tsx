@@ -10,9 +10,10 @@ import {
   ThumbsUp, Minus, RefreshCw, Copy,
   Maximize2, MessageSquarePlus, Search, Globe, Code, Image,
   ChevronDown, ChevronRight, X, Eye,
-  PieChart, ExternalLink, Plus, LogOut, UserCircle2, Users, History
+  PieChart, ExternalLink, Plus, LogOut, UserCircle2, Users, History, Download, FileDown
 } from "lucide-react";
 import { openCodeInNewTab } from "@/utils/preview";
+import { downloadAnalysisMarkdown, downloadCombinedAnalysisMarkdown, type AnalysisExportEntry } from "@/utils/exportAnalysis";
 import AuthModal from "@/components/AuthModal";
 
 // ─── Types ──────────────────────────────────────────────────
@@ -26,20 +27,20 @@ const AVAILABLE_MODELS: ModelProvider[] = [
   'openai/gpt-4o',
   'openai/gpt-oss-120b:free',
   // ── Anthropic ───────────────────────────
-  'anthropic/claude-3.7-sonnet',
   'anthropic/claude-3.5-haiku',
   // ── Google ──────────────────────────────
   'google/gemini-3.1-pro-preview',
   'google/gemini-3-flash-preview',
+  'google/gemini-3.5-flash',
   // ── DeepSeek ────────────────────────────
-  'deepseek/deepseek-reasoner',
   'deepseek/deepseek-chat',
+  'deepseek/deepseek-v4-pro',
   // ── Meta ────────────────────────────────
   'meta-llama/llama-3.3-70b-instruct',
+  'meta-llama/llama-3.3-70b-instruct:free',
   // ── Qwen (Alibaba) ──────────────────────
   'qwen/qwen3-coder:free',
-  // ── Mistral ─────────────────────────────
-  'mistralai/mistral-large-2411',
+  'qwen/qwen3.6-plus',
   // ── NVIDIA ──────────────────────────────
   'nvidia/nemotron-3-super-120b-a12b:free',
   // ── Cohere ──────────────────────────────
@@ -49,15 +50,16 @@ const AVAILABLE_MODELS: ModelProvider[] = [
 const MODEL_DISPLAY: Record<ModelProvider, string> = {
   'openai/gpt-4o': "GPT-4o",
   'openai/gpt-oss-120b:free': "GPT-OSS 120B",
-  'anthropic/claude-3.7-sonnet': "Claude 3.7 Sonnet",
   'anthropic/claude-3.5-haiku': "Claude 3.5 Haiku",
   'google/gemini-3.1-pro-preview': "Gemini 3.1 Pro",
   'google/gemini-3-flash-preview': "Gemini 3 Flash",
-  'deepseek/deepseek-reasoner': "DeepSeek R1",
+  'google/gemini-3.5-flash': "Gemini 3.5 Flash",
   'deepseek/deepseek-chat': "DeepSeek V3",
+  'deepseek/deepseek-v4-pro': "DeepSeek V4 Pro",
   'meta-llama/llama-3.3-70b-instruct': "Llama 3.3 70B",
+  'meta-llama/llama-3.3-70b-instruct:free': "Llama 3.3 70B (Free)",
   'qwen/qwen3-coder:free': "Qwen3 Coder (Free)",
-  'mistralai/mistral-large-2411': "Mistral Large 2",
+  'qwen/qwen3.6-plus': "Qwen3.6 Plus",
   'nvidia/nemotron-3-super-120b-a12b:free': "Nemotron 3 Super",
   'cohere/command-r-plus-08-2024': "Command R+",
 };
@@ -65,31 +67,42 @@ const MODEL_DISPLAY: Record<ModelProvider, string> = {
 const MODEL_COLORS: Record<ModelProvider, string> = {
   'openai/gpt-4o': "#10a37f",
   'openai/gpt-oss-120b:free': "#1a9b6c",
-  'anthropic/claude-3.7-sonnet': "#d97757",
   'anthropic/claude-3.5-haiku': "#e8a07a",
   'google/gemini-3.1-pro-preview': "#4285f4",
   'google/gemini-3-flash-preview': "#34a853",
-  'deepseek/deepseek-reasoner': "#4d6bfe",
+  'google/gemini-3.5-flash': "#0f9d58",
   'deepseek/deepseek-chat': "#6b7afe",
+  'deepseek/deepseek-v4-pro': "#2541e8",
   'meta-llama/llama-3.3-70b-instruct': "#0668E1",
+  'meta-llama/llama-3.3-70b-instruct:free': "#1a7fe8",
   'qwen/qwen3-coder:free': "#7c3aed",
-  'mistralai/mistral-large-2411': "#f2a900",
+  'qwen/qwen3.6-plus': "#9333ea",
   'nvidia/nemotron-3-super-120b-a12b:free': "#76b900",
   'cohere/command-r-plus-08-2024': "#39594d",
+};
+
+// Metrik anahtarı → Türkçe etiket (J3 tahkim dökümü için)
+const METRIC_TR: Record<string, string> = {
+  readability: "Okunabilirlik",
+  performance: "Performans",
+  security: "Güvenlik",
+  maintainability: "Sürdürülebilirlik",
+  promptAdherence: "Prompt Uyumu",
 };
 
 const MODEL_BADGE_CLS: Record<ModelProvider, string> = {
   'openai/gpt-4o': "bg-[#10a37f]/10 text-[#10a37f] border-[#10a37f]/20",
   'openai/gpt-oss-120b:free': "bg-[#1a9b6c]/10 text-[#1a9b6c] border-[#1a9b6c]/20",
-  'anthropic/claude-3.7-sonnet': "bg-[#d97757]/10 text-[#d97757] border-[#d97757]/20",
   'anthropic/claude-3.5-haiku': "bg-[#e8a07a]/10 text-[#e8a07a] border-[#e8a07a]/20",
   'google/gemini-3.1-pro-preview': "bg-[#4285f4]/10 text-[#4285f4] border-[#4285f4]/20",
   'google/gemini-3-flash-preview': "bg-[#34a853]/10 text-[#34a853] border-[#34a853]/20",
-  'deepseek/deepseek-reasoner': "bg-[#4d6bfe]/10 text-[#4d6bfe] border-[#4d6bfe]/20",
+  'google/gemini-3.5-flash': "bg-[#0f9d58]/10 text-[#0f9d58] border-[#0f9d58]/20",
   'deepseek/deepseek-chat': "bg-[#6b7afe]/10 text-[#6b7afe] border-[#6b7afe]/20",
+  'deepseek/deepseek-v4-pro': "bg-[#2541e8]/10 text-[#2541e8] border-[#2541e8]/20",
   'meta-llama/llama-3.3-70b-instruct': "bg-[#0668E1]/10 text-[#0668E1] border-[#0668E1]/20",
+  'meta-llama/llama-3.3-70b-instruct:free': "bg-[#1a7fe8]/10 text-[#1a7fe8] border-[#1a7fe8]/20",
   'qwen/qwen3-coder:free': "bg-[#7c3aed]/10 text-[#7c3aed] border-[#7c3aed]/20",
-  'mistralai/mistral-large-2411': "bg-[#f2a900]/10 text-[#f2a900] border-[#f2a900]/20",
+  'qwen/qwen3.6-plus': "bg-[#9333ea]/10 text-[#9333ea] border-[#9333ea]/20",
   'nvidia/nemotron-3-super-120b-a12b:free': "bg-[#76b900]/10 text-[#76b900] border-[#76b900]/20",
   'cohere/command-r-plus-08-2024': "bg-[#39594d]/10 text-[#39594d] border-[#39594d]/20",
 };
@@ -294,8 +307,8 @@ function SidebarBtn({ icon, label, active, small, onClick }: { icon: React.React
 
 // ─── AI Review UI ───────────────────────────────────────────
 function CategoryScore({ title, score, suggestions }: { title: string, score: number, suggestions: string[] }) {
-  const isGood = score >= 8;
-  const isWarn = score >= 5 && score < 8;
+  const isGood = score >= 80;
+  const isWarn = score >= 50 && score < 80;
   
   const colorCls = isGood ? "bg-emerald-500" : isWarn ? "bg-amber-500" : "bg-red-500";
   const textCls = isGood ? "text-emerald-400" : isWarn ? "text-amber-400" : "text-red-400";
@@ -305,10 +318,10 @@ function CategoryScore({ title, score, suggestions }: { title: string, score: nu
     <div className={`p-2.5 rounded-lg border ${bgCls}`}>
        <div className="flex items-center justify-between mb-1.5">
           <span className={`text-[11px] font-bold ${textCls}`}>{title}</span>
-          <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${colorCls} text-white`}>{score}/10</span>
+          <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${colorCls} text-white`}>{score}/100</span>
        </div>
        <div className="h-1.5 w-full bg-black/40 rounded-full overflow-hidden mb-2">
-         <div className={`h-full ${colorCls} transition-all duration-1000`} style={{ width: `${score * 10}%` }} />
+         <div className={`h-full ${colorCls} transition-all duration-1000`} style={{ width: `${score}%` }} />
        </div>
        {suggestions && suggestions.length > 0 && (
          <ul className="space-y-1 mt-2">
@@ -327,6 +340,9 @@ function CategoryScore({ title, score, suggestions }: { title: string, score: nu
 // ─── Model Card ─────────────────────────────────────────────
 function ModelCard({ model, result, animDelay }: { model: ModelProvider; result: ModelResult | undefined; animDelay: string }) {
   const updateResult = useBenchmarkStore(state => state.updateResult);
+  const prompt = useBenchmarkStore(state => state.prompt);
+  const saveEvaluationToSupabase = useBenchmarkStore(state => state.saveEvaluationToSupabase);
+  const user = useAuthStore(state => state.user);
   const [copied, setCopied] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const isLoading = result?.loading ?? false;
@@ -350,7 +366,7 @@ function ModelCard({ model, result, animDelay }: { model: ModelProvider; result:
       const res = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: result.content })
+        body: JSON.stringify({ code: result.content, prompt })
       });
       
       const data = await res.json();
@@ -360,6 +376,11 @@ function ModelCard({ model, result, animDelay }: { model: ModelProvider; result:
       }
       
       updateResult(model, { isAnalyzing: false, analysisResult: data.result });
+
+      // Giriş yapmış ve aktif oturumu olan kullanıcılar için sonucu kalıcı olarak kaydet.
+      if (user?.id) {
+        saveEvaluationToSupabase(user.id, model, data.result);
+      }
     } catch (err: any) {
       updateResult(model, { isAnalyzing: false, analysisError: err.message });
     }
@@ -431,12 +452,78 @@ function ModelCard({ model, result, animDelay }: { model: ModelProvider; result:
              
              {result!.analysisResult && (
                <div className="mt-4 space-y-3 animate-fade-in border-t border-[--border-soft] pt-3">
-                  <h4 className="text-xs font-bold text-zinc-300 mb-2">AI Kod İnceleme Sonucu</h4>
+                  <div className="flex flex-col gap-1.5 mb-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <h4 className="text-xs font-bold text-zinc-300">AI Kod İnceleme Sonucu</h4>
+                      <button
+                        onClick={() => downloadAnalysisMarkdown({
+                          modelId: model,
+                          displayName: MODEL_DISPLAY[model],
+                          prompt,
+                          code: result!.content,
+                          timeTakenMs: result!.timeTakenMs,
+                          analysis: result!.analysisResult!,
+                        })}
+                        className="flex items-center gap-1 px-2 py-1 text-[10px] font-semibold rounded-md border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 transition-all"
+                        title="Bu modelin analiz raporunu Markdown olarak indir"
+                      >
+                        <Download className="w-3 h-3" />Markdown İndir
+                      </button>
+                    </div>
+                    {result!.analysisResult.judgeModels && result!.analysisResult.judgeModels.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {result!.analysisResult.judgeModels.map((m) => (
+                          <span key={m} className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-[--accent]/10 text-[--accent] border border-[--accent]/20">
+                            {m.split('/')[1] ?? m}
+                          </span>
+                        ))}
+                        {result!.analysisResult.decisionMethod === 'arbitration_j3' ? (
+                          <span className="text-[9px] font-semibold self-center px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20" title={`Uyuşmazlık: ${(result!.analysisResult.disagreedMetrics ?? []).join(', ')}`}>
+                            tahkim (J3)
+                          </span>
+                        ) : result!.analysisResult.decisionMethod === 'arbitration_failed_fallback_average' ? (
+                          <span className="text-[9px] text-zinc-500 self-center">tahkim başarısız · ortalama</span>
+                        ) : (
+                          <span className="text-[9px] text-zinc-500 self-center">konsensüs</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* J3 tahkim dökümü — hangi metrik için çağrıldı + J1/J2/J3 → Final */}
+                  {result!.analysisResult.decisionMethod === 'arbitration_j3' && (result!.analysisResult.disagreedMetrics?.length ?? 0) > 0 && (
+                    <div className="mb-2 p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                      <div className="flex items-center gap-1.5 text-[10px] font-bold text-amber-400 mb-1.5">
+                        <span>⚖</span>
+                        <span>J3 tahkimci şu metrik(ler) için çağrıldı:</span>
+                      </div>
+                      <ul className="space-y-1">
+                        {result!.analysisResult.disagreedMetrics!.map((m) => {
+                          const b = result!.analysisResult!.metricBreakdown?.[m];
+                          return (
+                            <li key={m} className="text-[10px] text-zinc-300 flex flex-wrap items-center gap-1.5">
+                              <span className="font-semibold text-amber-300">{METRIC_TR[m] ?? m}</span>
+                              {b && (
+                                <span className="font-mono text-zinc-400">
+                                  J1 {b.j1} · J2 {b.j2} · J3 {b.j3} → <span className="text-zinc-200 font-bold">{b.final}</span>
+                                  <span className="text-zinc-600"> (medyan)</span>
+                                </span>
+                              )}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
+                  )}
+
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                      <CategoryScore title="Okunabilirlik" score={result!.analysisResult.readability} suggestions={result!.analysisResult.suggestions?.readability} />
                      <CategoryScore title="Performans" score={result!.analysisResult.performance} suggestions={result!.analysisResult.suggestions?.performance} />
                      <CategoryScore title="Güvenlik" score={result!.analysisResult.security} suggestions={result!.analysisResult.suggestions?.security} />
                      <CategoryScore title="Sürdürülebilirlik" score={result!.analysisResult.maintainability} suggestions={result!.analysisResult.suggestions?.maintainability} />
+                     <div className="sm:col-span-2">
+                       <CategoryScore title="Prompt Uyumu" score={result!.analysisResult.promptAdherence} suggestions={result!.analysisResult.suggestions?.promptAdherence} />
+                     </div>
                   </div>
                </div>
              )}
@@ -479,15 +566,16 @@ function ModelCard({ model, result, animDelay }: { model: ModelProvider; result:
 const VOTE_BTN_STYLES: Record<ModelProvider, string> = {
   'openai/gpt-4o': "vote-btn-a",
   'openai/gpt-oss-120b:free': "vote-btn-a",
-  'anthropic/claude-3.7-sonnet': "vote-btn-b",
   'anthropic/claude-3.5-haiku': "vote-btn-b",
   'google/gemini-3.1-pro-preview': "vote-btn-tie",
   'google/gemini-3-flash-preview': "vote-btn-tie",
-  'deepseek/deepseek-reasoner': "vote-btn-a",
+  'google/gemini-3.5-flash': "vote-btn-tie",
   'deepseek/deepseek-chat': "vote-btn-b",
+  'deepseek/deepseek-v4-pro': "vote-btn-a",
   'meta-llama/llama-3.3-70b-instruct': "vote-btn-a",
+  'meta-llama/llama-3.3-70b-instruct:free': "vote-btn-a",
   'qwen/qwen3-coder:free': "vote-btn-tie",
-  'mistralai/mistral-large-2411': "vote-btn-b",
+  'qwen/qwen3.6-plus': "vote-btn-tie",
   'nvidia/nemotron-3-super-120b-a12b:free': "vote-btn-tie",
   'cohere/command-r-plus-08-2024': "vote-btn-b",
 };
@@ -583,7 +671,7 @@ export default function Dashboard() {
   const { initialize, user } = useAuthStore();
   const { voteStats: globalVoteStats, overview: globalOverview, refresh: refreshGlobalStats } = useGlobalStats();
   const { grouped: sessionGroups, refresh: refreshSessions } = useSessionHistory(user?.id ?? null);
-  const [selectedModels, setSelectedModels] = useState<ModelProvider[]>(["openai/gpt-4o", "google/gemini-3.1-pro-preview"]);
+  const [selectedModels, setSelectedModels] = useState<ModelProvider[]>(["deepseek/deepseek-v4-pro", "qwen/qwen3.6-plus"]);
   const [votes, setVotes] = useState<VoteState>(() => {
     const initial: any = { tie: 0, both_bad: 0 };
     AVAILABLE_MODELS.forEach(m => initial[m] = 0);
@@ -851,6 +939,31 @@ export default function Dashboard() {
               </div>
             )}
 
+            {/* Toplu Markdown indirme — en az bir modelde analiz sonucu varsa görünür */}
+            {showCards && selectedModels.some(m => results[m]?.analysisResult) && (
+              <div className="flex justify-end mb-3">
+                <button
+                  onClick={() => {
+                    const entries: AnalysisExportEntry[] = selectedModels
+                      .filter(m => results[m]?.analysisResult)
+                      .map(m => ({
+                        modelId: m,
+                        displayName: MODEL_DISPLAY[m],
+                        prompt: lastPrompt,
+                        code: results[m]!.content,
+                        timeTakenMs: results[m]!.timeTakenMs,
+                        analysis: results[m]!.analysisResult!,
+                      }));
+                    downloadCombinedAnalysisMarkdown(lastPrompt, entries);
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold rounded-md border border-[--accent]/30 text-[--accent] hover:bg-[--accent]/10 transition-all"
+                  title="Tüm karşılaştırılan modellerin analizlerini tek Markdown dosyasında indir"
+                >
+                  <FileDown className="w-3.5 h-3.5" />Tüm Analizleri İndir (.md)
+                </button>
+              </div>
+            )}
+
             {/* Model cards */}
             {showCards && (
               <div className={`grid ${colClass} gap-4 mb-6`}>
@@ -910,12 +1023,11 @@ export default function Dashboard() {
                             <div className="text-[10px] text-zinc-400 px-2 py-1.5 font-bold mb-1 border-b border-[--border-soft] uppercase tracking-wider">En fazla 3 model seçilebilir</div>
                             {[
                               { label: "OpenAI", models: ['openai/gpt-4o', 'openai/gpt-oss-120b:free'] as ModelProvider[] },
-                              { label: "Anthropic", models: ['anthropic/claude-3.7-sonnet', 'anthropic/claude-3.5-haiku'] as ModelProvider[] },
-                              { label: "Google", models: ['google/gemini-3.1-pro-preview', 'google/gemini-3-flash-preview'] as ModelProvider[] },
-                              { label: "DeepSeek", models: ['deepseek/deepseek-reasoner', 'deepseek/deepseek-chat'] as ModelProvider[] },
-                              { label: "Meta", models: ['meta-llama/llama-3.3-70b-instruct'] as ModelProvider[] },
-                              { label: "Qwen", models: ['qwen/qwen3-coder:free'] as ModelProvider[] },
-                              { label: "Mistral", models: ['mistralai/mistral-large-2411'] as ModelProvider[] },
+                              { label: "Anthropic", models: ['anthropic/claude-3.5-haiku'] as ModelProvider[] },
+                              { label: "Google", models: ['google/gemini-3.1-pro-preview', 'google/gemini-3-flash-preview', 'google/gemini-3.5-flash'] as ModelProvider[] },
+                              { label: "DeepSeek", models: ['deepseek/deepseek-chat', 'deepseek/deepseek-v4-pro'] as ModelProvider[] },
+                              { label: "Meta", models: ['meta-llama/llama-3.3-70b-instruct', 'meta-llama/llama-3.3-70b-instruct:free'] as ModelProvider[] },
+                              { label: "Qwen", models: ['qwen/qwen3-coder:free', 'qwen/qwen3.6-plus'] as ModelProvider[] },
                               { label: "NVIDIA", models: ['nvidia/nemotron-3-super-120b-a12b:free'] as ModelProvider[] },
                               { label: "Cohere", models: ['cohere/command-r-plus-08-2024'] as ModelProvider[] },
                             ].map(group => (

@@ -1,3 +1,6 @@
+import { SYSTEM_CONSTRAINTS } from '@/lib/prompts';
+import { GENERATION_PARAMS } from '@/lib/llmConfig';
+
 const RETRY_DELAYS_MS = [10000, 30000, 60000];
 
 function sleep(ms: number): Promise<void> {
@@ -37,11 +40,12 @@ export class OpenRouterService {
         },
         body: JSON.stringify({
           model: modelId,
+          ...GENERATION_PARAMS,
           stream: false,
           messages: [
             {
               role: 'system',
-              content: 'Sen uzman bir tam-yığın (full-stack) yazılım geliştiricisisin. Frontend sorularında modern UI/UX ve estetik konusunda üst düzey yetkinliğe sahipsin; backend, algoritma ve sistem tasarımı sorularında ise temiz mimari ve en iyi pratikleri uygularsın. Ürettiğin her kod üretime hazır (production-ready), okunabilir ve çalışır durumda olmalıdır. Asla eksik veya yer tutucu (placeholder) kod verme. Frontend sorularında gerekirse güzel renk paletleri, pürüzsüz animasyonlar ve modern gölgelendirmeler kullan; backend veya genel sorularda en iyi pratiklere ve temiz koda odaklan.',
+              content: SYSTEM_CONSTRAINTS,
             },
             { role: 'user', content: prompt },
           ],
@@ -51,13 +55,15 @@ export class OpenRouterService {
       if (response.status === 429) {
         const errorData = await response.json().catch(() => ({}));
         const errMsg = errorData?.error?.message || errorData?.message || 'İstek sınırı aşıldı';
+        lastError = new Error(`Rate limit aşıldı (429): ${errMsg}`);
+
+        if (attempt >= RETRY_DELAYS_MS.length) break;
+
         const retryAfterHeader = response.headers.get('Retry-After');
-        const fallbackDelay = RETRY_DELAYS_MS[attempt] ?? 60_000;
         const waitMs = retryAfterHeader
           ? Math.min(parseInt(retryAfterHeader, 10) * 1000, 70_000)
-          : fallbackDelay;
+          : RETRY_DELAYS_MS[attempt];
         console.warn(`[OpenRouter] ${modelId} — 429 rate limit (${errMsg}), ${waitMs / 1000}s bekleniyor... (deneme ${attempt + 1}/${RETRY_DELAYS_MS.length})`);
-        lastError = new Error(`Rate limit aşıldı (429): ${errMsg}`);
         await sleep(waitMs);
         continue;
       }

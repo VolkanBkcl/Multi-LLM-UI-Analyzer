@@ -4,29 +4,63 @@ import { getSupabaseBrowserClient } from '@/lib/supabase';
 export type ModelProvider = 
   | 'openai/gpt-4o'
   | 'openai/gpt-oss-120b:free'
-  | 'anthropic/claude-3.7-sonnet'
   | 'anthropic/claude-3.5-haiku'
   | 'google/gemini-3.1-pro-preview'
   | 'google/gemini-3-flash-preview'
-  | 'deepseek/deepseek-reasoner'
+  | 'google/gemini-3.5-flash'
   | 'deepseek/deepseek-chat'
+  | 'deepseek/deepseek-v4-pro'
   | 'meta-llama/llama-3.3-70b-instruct'
+  | 'meta-llama/llama-3.3-70b-instruct:free'
   | 'qwen/qwen3-coder:free'
-  | 'mistralai/mistral-large-2411'
+  | 'qwen/qwen3.6-plus'
   | 'nvidia/nemotron-3-super-120b-a12b:free'
   | 'cohere/command-r-plus-08-2024';
+
+export type DecisionMethod =
+  | 'dual_judge_consensus'
+  | 'arbitration_j3'
+  | 'arbitration_failed_fallback_average';
 
 export type AnalysisResult = {
   readability: number;
   performance: number;
   security: number;
   maintainability: number;
+  promptAdherence: number;
+  judgeModels?: string[];
   suggestions: {
     readability: string[];
     performance: string[];
     security: string[];
     maintainability: string[];
+    promptAdherence: string[];
   };
+  // Çift hakem + tahkim meta verileri (opsiyonel — eski kayıtlar için undefined olabilir):
+  overallScore?: number;
+  decisionMethod?: DecisionMethod;
+  disagreedMetrics?: string[];
+  j1Model?: string;
+  j2Model?: string;
+  j3Model?: string | null;
+  promptAlignmentDetail?: {
+    programmaticScore: number;
+    semanticScore: number;
+    violations: string[];
+    totalRules: number;
+    passedRules: number;
+  };
+  // Metrik bazlı J1/J2/J3 kırılımı (UI breakdown + .md raporu için):
+  metricBreakdown?: Record<
+    string,
+    {
+      j1: number;
+      j2: number;
+      j3: number | null;
+      final: number;
+      method: 'consensus_average' | 'median_tiebreaker';
+    }
+  >;
 };
 
 export type ModelResult = {
@@ -58,6 +92,11 @@ interface BenchmarkState {
   saveResponseToSupabase: (sessionId: string, model: ModelProvider, content: string, timeTakenMs: number) => Promise<string | null>;
   saveVoteToSupabase: (userId: string, voteKey: string) => Promise<void>;
   saveFavoriteToSupabase: (userId: string, responseId: string) => Promise<void>;
+  saveEvaluationToSupabase: (
+    userId: string,
+    model: ModelProvider,
+    result: AnalysisResult,
+  ) => Promise<void>;
 }
 
 export const useBenchmarkStore = create<BenchmarkState>((set, get) => ({
@@ -157,6 +196,32 @@ export const useBenchmarkStore = create<BenchmarkState>((set, get) => ({
       if (error) console.error('[Supabase] Favori kayıt hatası:', error.message);
     } catch (e) {
       console.error('[Supabase] Favori kayıt exception:', e);
+    }
+  },
+
+  saveEvaluationToSupabase: async (userId, model, result) => {
+    const sessionId = get().currentSessionId;
+    if (!sessionId) return;
+    try {
+      const supabase = getSupabaseBrowserClient();
+      const { error } = await supabase.from('evaluations').insert({
+        session_id: sessionId,
+        user_id: userId,
+        model,
+        readability: result.readability,
+        performance: result.performance,
+        security: result.security,
+        maintainability: result.maintainability,
+        prompt_adherence: result.promptAdherence,
+        overall_score: result.overallScore ?? null,
+        decision_method: result.decisionMethod ?? null,
+        disagreed_metrics: result.disagreedMetrics ?? null,
+        j3_model: result.j3Model ?? null,
+        prompt_alignment_detail: result.promptAlignmentDetail ?? null,
+      });
+      if (error) console.error('[Supabase] Değerlendirme kayıt hatası:', error.message);
+    } catch (e) {
+      console.error('[Supabase] Değerlendirme kayıt exception:', e);
     }
   },
 }));
