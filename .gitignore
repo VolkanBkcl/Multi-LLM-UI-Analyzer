@@ -45,3 +45,6 @@ supabase/.temp/
 
 # claude code session files
 .claude/
+
+# article / paper draft file
+/docs/makale
